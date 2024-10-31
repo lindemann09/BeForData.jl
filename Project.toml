@@ -1,7 +1,7 @@
 name = "BeForData"
 uuid = "49581401-e3b0-43cb-bb9c-49750952130d"
 authors = ["Oliver Lindemann"]
-version = "0.2.1"
+version = "0.2.2-dev1"
 
 [deps]
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
