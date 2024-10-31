@@ -129,9 +129,9 @@ TODO
 """
 function adjust_baseline!(d::BeForEpochs, baseline_window::UnitRange{<:Integer})
 	dat = d.dat .+ d.baseline
-	bsl = mean(dat[:, baseline_window], dims = 2)
+	bsl = mean(d.dat[:, baseline_window], dims = 2)
 	d.dat[:, :] .= dat .- bsl
 	d.baseline[:] .= bsl
-	return fe
+	return d
 end
 

@@ -3,6 +3,7 @@ module BeForData
 using Arrow
 using DataFrames
 using DSP
+using Statistics: mean
 
 export BeForRecord,
         get_data,

@@ -134,13 +134,13 @@ function add_column!(d::BeForRecord, name::String, data::AbstractVector;
 	is_force_column::Bool = false)
 	d.dat[!, name] = data
 	is_force_column && push!(d.columns, name)
-	return nothing
+	return d
 end
 
 function drop_column!(d::BeForRecord, name::String)
 	select!(d.dat, Not(name))
 	filter!(x -> x != name, d.columns)
-	return nothing
+	return d
 end
 
 function session_rows(d::BeForRecord, session::Int)

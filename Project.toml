@@ -1,12 +1,13 @@
 name = "BeForData"
 uuid = "49581401-e3b0-43cb-bb9c-49750952130d"
 authors = ["Oliver Lindemann"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
 DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 julia = "1.6.7"
