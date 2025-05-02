@@ -62,7 +62,7 @@ end
 
 ## processing
 """
-	extract_epochs(d::BeForRecord;
+	extract_epochs(d::BeForRecord, column: str;
 		zero_samples::AbstractVector{<:Integer},
 		n_samples::Integer,
         n_samples_before::Integer,
@@ -72,7 +72,7 @@ end
         ---------
 		d: BeForRecord
 			the data
-        column: str
+    	column: str
             name of column containing the force data to be used
         zero_samples: List[int]
             zero sample that define the epochs
