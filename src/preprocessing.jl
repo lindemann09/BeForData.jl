@@ -1,9 +1,5 @@
-function scale_force!(d::BeForRecord, factor::Real,
-			columns::Union{Nothing, AbstractString, Vector{<:AbstractString}} = nothing)
-	if isnothing(columns)
-		columns = d.columns
-	end
-	d.dat[:, columns] = d.dat[:, columns] .* factor
+function scale_force!(d::BeForRecord, factor::Real)
+	d.dat[!, d.force_cols] = d.dat[!, d.force_cols] .* factor
 	return d
 end
 
@@ -19,18 +15,13 @@ end;
 
 function lowpass_filter(d::BeForRecord;
 	cutoff_freq::Real,
-	butterworth_order::Integer,
-	columns::Union{Nothing, AbstractString, Vector{<:AbstractString}} = nothing)
-
-	if isnothing(columns)
-		columns = d.columns
-	end
+	butterworth_order::Integer)
 
 	df = copy(d.dat)
 	sampling_rate = d.sampling_rate
 	for s in 1:d.n_sessions
 		r = session_rows(d, s)
-		for c in string_list(columns)
+		for c in d.force_cols
 			df[r, c] = lowpass_filter(df[r, c]; sampling_rate,
 				cutoff_freq, butterworth_order)
 		end
@@ -38,8 +29,7 @@ function lowpass_filter(d::BeForRecord;
 	meta = Dict("cutoff_freq" => cutoff_freq,
 		"butterworth_order" => butterworth_order)
 	meta = merge(d.meta, meta)
-	return BeForRecord(df, d.sampling_rate, d.columns, d.sessions,
-                         d.time_column, meta)
+	return BeForRecord(df, d.sampling_rate, d.time_column, d.sessions, meta)
 end;
 
 
@@ -69,23 +59,18 @@ end
 
 TODO
 """
-function moving_average(d::BeForRecord, window_size::Int;
-	columns::Union{Nothing, AbstractString, Vector{<:AbstractString}} = nothing)
-
-	if isnothing(columns)
-		columns = d.columns
-	end
+function moving_average(d::BeForRecord, window_size::Int)
 
 	df = copy(d.dat)
 	for s in 1:d.n_sessions
 		r = session_rows(d, s)
-		for c in string_list(columns)
+		for c in d.force_cols
 			df[r, c] = moving_average(df[r, c], window_size)
 		end
 	end
 	meta =  Dict("Moving average window: " => window_size)
-	return BeForRecord(df, d.sampling_rate, d.columns, d.sessions,
-                         d.time_column, merge(d.meta, meta))
+	return BeForRecord(df, d.sampling_rate, d.time_column, d.sessions,
+                         merge(d.meta, meta))
 end;
 
 
@@ -94,23 +79,18 @@ end;
 
 TODO
 """
-function detrend(d::BeForRecord, window_size::Int;
-	columns::Union{Nothing, AbstractString, Vector{<:AbstractString}} = nothing)
-
-	if isnothing(columns)
-		columns = d.columns
-	end
+function detrend(d::BeForRecord, window_size::Int)
 
 	df = copy(d.dat)
 	for s in 1:d.n_sessions
 		r = session_rows(d, s)
-		for c in string_list(columns)
+		for c in d.force_cols
 			@inbounds df[r, c] = df[r, c] .- moving_average(df[r, c], window_size)
 		end
 	end
 	meta =  Dict("Detrend window: " => window_size)
-	return BeForRecord(df, d.sampling_rate, d.columns, d.sessions,
-                         d.time_column, merge(d.meta, meta))
+	return BeForRecord(df, d.sampling_rate, d.time_column, d.sessions,
+                    merge(d.meta, meta))
 end;
 
 

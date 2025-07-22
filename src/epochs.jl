@@ -90,7 +90,7 @@ end
 
 """
 function extract_epochs(d::BeForRecord,
-	column::Union{Symbol, String};
+	column::Union{Symbol, String, Int};
 	zero_samples::AbstractVector{<:Integer},
 	n_samples::Integer,
 	n_samples_before::Integer,

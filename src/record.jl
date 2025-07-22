@@ -6,51 +6,53 @@ TODO
 struct BeForRecord
 	dat::DataFrame
 	sampling_rate::Float64
-	columns::Vector{String}
-	sessions::Vector{Int}
 	time_column::String
+	sessions::Vector{Int}
 	meta::Dict{String, Any}
 
-	function BeForRecord(dat::DataFrame, sampling_rate::Real,
-				columns::Vector{String}, sessions::AbstractVector{Int},
-				time_column::String, meta::Dict{String, Any})
+	function BeForRecord(dat::DataFrame,
+				sampling_rate::Real,
+				time_column::Union{Nothing, String},
+				sessions::AbstractVector{Int},
+				meta::Dict{String, Any})
 
-		for c in columns # convert to Data to Float64
+		if isnothing(time_column)
+			time_column = ""
+		else
+			if time_column ∉ names(dat)
+				throw(ArgumentError("'$time_column' not in dataframe"))
+			end
+		end
+
+		for c in findall(names(dat) .!= time_column) # convert to Data to Float64
 			dat[!, c] = convert.(Float64, dat[!, c])
 		end
-		new(disallowmissing(dat, error=false), sampling_rate, columns,
-			collect(sessions), time_column, meta)
+		new(disallowmissing(dat, error=false), sampling_rate, time_column,
+			collect(sessions), meta)
 	end
 end;
 
 
-function BeForRecord(dat::DataFrame, sampling_rate::Real;
-	columns::Union{Nothing, AbstractString, Vector{<:AbstractString}} = nothing,
+function BeForRecord(dat::DataFrame;
+	sampling_rate::Real,
+	time_column::Union{Nothing, String},
 	sessions::Union{Nothing, AbstractVector{Int}} = nothing,
-	time_column::String = "",
 	meta::Dict = Dict{String, Any}())
 
 	if isnothing(sessions)
 		sessions = nrow(dat) > 0 ? [1] : Int[]
 	end
-	if isnothing(columns)
-		columns = names(dat)
-	end
-	return BeForRecord(dat, Float64(sampling_rate), string_list(columns), sessions,
-		time_column, meta)
+	return BeForRecord(dat, Float64(sampling_rate), time_column, sessions, meta)
 end
 
 function BeForRecord(arrow_table::Arrow.Table)
 	meta = Dict{String, Any}()
 	sampling_rate = 0
-	columns = String[]
 	sessions = []
 	time_column = ""
 	for (k, v) in Arrow.getmetadata(arrow_table)
 		if k == "sampling_rate"
 			sampling_rate = parse(Float64, v)
-		elseif k == "columns"
-			columns = string.(split(v, ","))
 		elseif k == "sessions"
 			sessions = parse.(Int, split(v, ","))
 		elseif k == "time_column"
@@ -60,88 +62,68 @@ function BeForRecord(arrow_table::Arrow.Table)
 		end
 	end
 	return BeForRecord(DataFrame(arrow_table), sampling_rate;
-		columns, sessions, time_column, meta)
+		time_column, sessions, meta)
 end
 
 
 function Base.copy(d::BeForRecord)
-	return BeForRecord(copy(d.dat), d.sampling_rate, copy(d.columns),
-		copy(d.sessions), d.time_column, copy(d.meta))
+	return BeForRecord(copy(d.dat), d.sampling_rate, d.time_column,
+		copy(d.sessions), copy(d.meta))
 end
 
-Base.propertynames(::BeForRecord) = (:dat, :sampling_rate, :columns, :sessions,
-	:meta, :n_samples, :n_forces, :n_sessions, :time_column, :time_stamps)
+Base.propertynames(::BeForRecord) = (:dat, :sampling_rate, :time_column, :sessions,
+	:meta, :n_samples, :force_cols :n_forces, :n_sessions)
 function Base.getproperty(d::BeForRecord, s::Symbol)
 	if s === :n_samples
 		return nrow(d.dat)
+	elseif s === :force_cols
+		return findall(names(d.dat) .!= d.time_column)
 	elseif s === :n_forces
-		return length(d.columns)
+		return length(d.force_cols)
 	elseif s === :n_sessions
 		return length(d.sessions)
-	elseif s === :time_stamps
-		return _time_stamps(d)
 	else
 		return getfield(d, s)
 	end
 end
 
-function _time_stamps(d::BeForRecord)
+function time_stamps(d::BeForRecord;
+	session::Union{Nothing, Int} = nothing)
+
+	idx = isnothing(session) ? (1:nrow(d.dat)) : session_rows(d, session)
+
 	if length(d.time_column) > 0
-		return d.dat[:, d.time_column]
+		return d.dat[idx, d.time_column]
 	else
-		step = 1000.0 / d.sampling_rate
-		final_time = (nrow(d.dat) - 1) * step
+		step = 1000.0 / d.sampling_rate # in ms
+		final_time = (length(idx) - 1) * step
 		return 0:step:final_time
 	end
+end
+
+
+function forces(d::BeForRecord;
+	session::Union{Nothing, Int} = nothing)
+
+	idx = isnothing(session) ? (1:nrow(d.dat)) : session_rows(d, session)
+	return d.dat[idx, d.force_cols]
 end
 
 function add_session(d::BeForRecord, session_data::DataFrame)
 	dat = vcat(copy(d.dat), session_data)
 	sessions = vcat(d.sessions, nrow(d.dat))
-	return BeForRecord(dat, d.sampling_rate, d.columns, sessions, d.meta)
+	return BeForRecord(dat, d.sampling_rate, d.time_column, sessions, d.meta)
 end
-
-function get_data(d::BeForRecord;
-	columns::Union{Nothing, AbstractString, Vector{<:AbstractString}} = nothing,
-	session::Union{Nothing, Int} = nothing)
-
-	if isnothing(columns)
-		columns = names(dat)
-	end
-	if isnothing(session)
-		return d.dat[!, columns]
-	else
-		return d.dat[session_rows(d, session), columns]
-	end
-end
-
-function get_forces(d::BeForRecord; session::Union{Nothing, Int} = nothing)
-	return get_data(d.columns; session)
-end
-
 
 function write_feather(d::BeForRecord, filepath::AbstractString;
 	compress::Any = :zstd)
 	schema = Dict([
 		"sampling_rate" => string(d.sampling_rate),
-		"columns" => join(d.columns, ","),
 		"time_column" => d.time_column,
 		"sessions" => join([string(x) for x in d.sessions], ",")])
 	Arrow.write(filepath, d.dat; compress, metadata = merge(schema, d.meta))
 end
 
-function add_column!(d::BeForRecord, name::String, data::AbstractVector;
-	is_force_column::Bool = false)
-	d.dat[!, name] = data
-	is_force_column && push!(d.columns, name)
-	return d
-end
-
-function drop_column!(d::BeForRecord, name::String)
-	select!(d.dat, Not(name))
-	filter!(x -> x != name, d.columns)
-	return d
-end
 
 function session_rows(d::BeForRecord, session::Int)
 	# helper function
@@ -157,14 +139,13 @@ end
 
 """
 function find_samples_by_time(times::AbstractVector, d::BeForRecord)
-	ts = d.time_stamps
+	ts = time_stamps(d)
 	return searchsortedfirst.(Ref(ts), times)
 end;
 
 function Base.show(io::IO, mime::MIME"text/plain", x::BeForRecord)
 	println(io, "BeForRecord")
 	println(io, "  sampling_rate: $(x.sampling_rate), n sessions: $(x.n_sessions) ")
-	println(io, "  columns $(x.columns)")
 	println(io, "  time_column $(x.time_column)")
 	println(io, "  metadata")
 	for (k, v) in x.meta
@@ -173,10 +154,5 @@ function Base.show(io::IO, mime::MIME"text/plain", x::BeForRecord)
 	println(io, x.dat)
 end
 
-
-### helper
-
-string_list(x::AbstractString) = [x]
-string_list(x::Vector{<:AbstractString}) = x
 
 

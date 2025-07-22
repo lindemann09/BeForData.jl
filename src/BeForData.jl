@@ -6,13 +6,11 @@ using DSP
 using Statistics: mean
 
 export BeForRecord,
-        get_data,
-        get_forces,
+        forces,
+        time_stamps,
         write_feather,
         session_rows,
         add_session,
-        add_column!,
-        drop_column!,
         find_samples_by_time
 
 export BeForEpochs,
