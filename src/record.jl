@@ -33,9 +33,9 @@ struct BeForRecord
 end;
 
 
-function BeForRecord(dat::DataFrame;
-	sampling_rate::Real,
-	time_column::Union{Nothing, String},
+function BeForRecord(dat::DataFrame,
+	sampling_rate::Real;
+	time_column::Union{Nothing, String} = nothing,
 	sessions::Union{Nothing, AbstractVector{Int}} = nothing,
 	meta::Dict = Dict{String, Any}())
 
@@ -127,9 +127,8 @@ end
 
 function session_rows(d::BeForRecord, session::Int)
 	# helper function
-	f = d.sessions[session] + 1 # julia index
 	t = session + 1 > length(d.sessions) ? nrow(d.dat) : d.sessions[session+1]
-	return f:t
+	return d.sessions[session]:t
 end
 
 """returns sample index (i) of the closes time in the BeForRecord.

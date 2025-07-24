@@ -3,19 +3,25 @@ function scale_force!(d::BeForRecord, factor::Real)
 	return d
 end
 
-function lowpass_filter(d::AbstractVector{<:AbstractFloat};
+function lowpass_filter(dat::AbstractVector{<:AbstractFloat};
 	sampling_rate::Real,
-	cutoff_freq::Real,
-	butterworth_order::Integer)
-
-	responsetype = Lowpass(cutoff_freq; fs = sampling_rate)
-	myfilter = digitalfilter(responsetype, Butterworth(butterworth_order))
-	return filtfilt(myfilter, d .- d[1]) .+ d[1]  # filter centered data
+	cutoff::Real,
+	butterworth_order::Integer,
+	center_data::Bool = true
+)
+	myfilter = digitalfilter(Lowpass(cutoff), Butterworth(butterworth_order);
+					fs = sampling_rate)
+	if center_data
+		return filtfilt(myfilter, dat .- dat[1]) .+ dat[1] # filter centred data
+	else
+		return filtfilt(myfilter, dat)
+	end
 end;
 
 function lowpass_filter(d::BeForRecord;
-	cutoff_freq::Real,
-	butterworth_order::Integer)
+	cutoff::Real,
+	butterworth_order::Integer,
+	center_data::Bool = true)
 
 	df = copy(d.dat)
 	sampling_rate = d.sampling_rate
@@ -23,10 +29,10 @@ function lowpass_filter(d::BeForRecord;
 		r = session_rows(d, s)
 		for c in d.force_cols
 			df[r, c] = lowpass_filter(df[r, c]; sampling_rate,
-				cutoff_freq, butterworth_order)
+				cutoff, butterworth_order, center_data)
 		end
 	end
-	meta = Dict("cutoff_freq" => cutoff_freq,
+	meta = Dict("cutoff" => cutoff,
 		"butterworth_order" => butterworth_order)
 	meta = merge(d.meta, meta)
 	return BeForRecord(df, d.sampling_rate, d.time_column, d.sessions, meta)
