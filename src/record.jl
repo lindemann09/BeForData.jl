@@ -13,7 +13,7 @@ struct BeForRecord
 	function BeForRecord(dat::DataFrame,
 				sampling_rate::Real,
 				time_column::Union{Nothing, String},
-				sessions::AbstractVector{Int},
+				sessions::Union{Nothing, AbstractVector{Int}},
 				meta::Dict{String, Any})
 
 		if isnothing(time_column)
@@ -27,21 +27,27 @@ struct BeForRecord
 		for c in findall(names(dat) .!= time_column) # convert to Data to Float64
 			dat[!, c] = convert.(Float64, dat[!, c])
 		end
+
+		if isnothing(sessions)
+			sessions = nrow(dat) > 0 ? [1] : Int[]
+		else
+			sessions = collect(sessions)
+			if sessions[1] > 1
+				pushfirst!(sessions, 1)
+			elseif sessions[1] < 1
+				sessions[1] = 1
+			end
+		end
 		new(disallowmissing(dat, error=false), sampling_rate, time_column,
-			collect(sessions), meta)
+			sessions, meta)
 	end
 end;
-
 
 function BeForRecord(dat::DataFrame,
 	sampling_rate::Real;
 	time_column::Union{Nothing, String} = nothing,
 	sessions::Union{Nothing, AbstractVector{Int}} = nothing,
 	meta::Dict = Dict{String, Any}())
-
-	if isnothing(sessions)
-		sessions = nrow(dat) > 0 ? [1] : Int[]
-	end
 	return BeForRecord(dat, Float64(sampling_rate), time_column, sessions, meta)
 end
 
@@ -87,6 +93,16 @@ function Base.getproperty(d::BeForRecord, s::Symbol)
 	end
 end
 
+function split_sessions(d::BeForRecord)
+	rtn = BeForRecord[]
+	for x in 1:d.n_sessions
+		idx = session_rows(d, x)
+		dat = BeForRecord(d.dat[idx, :], d.sampling_rate, d.time_column, nothing, d.meta)
+		push!(rtn, dat)
+	end
+	return rtn
+end
+
 function time_stamps(d::BeForRecord;
 	session::Union{Nothing, Int} = nothing)
 
@@ -100,7 +116,6 @@ function time_stamps(d::BeForRecord;
 		return 0:step:final_time
 	end
 end
-
 
 function forces(d::BeForRecord;
 	session::Union{Nothing, Int} = nothing)
@@ -123,7 +138,6 @@ function write_feather(d::BeForRecord, filepath::AbstractString;
 		"sessions" => join([string(x) for x in d.sessions], ",")])
 	Arrow.write(filepath, d.dat; compress, metadata = merge(schema, d.meta))
 end
-
 
 function session_rows(d::BeForRecord, session::Int)
 	# helper function

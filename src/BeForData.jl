@@ -8,6 +8,7 @@ using Statistics: mean
 export BeForRecord,
         forces,
         time_stamps,
+        split_sessions,
         write_feather,
         session_rows,
         add_session,
