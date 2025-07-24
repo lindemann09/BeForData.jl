@@ -10,7 +10,7 @@ export BeForRecord,
         time_stamps,
         split_sessions,
         write_feather,
-        session_rows,
+        session_samples,
         add_session,
         find_samples_by_time
 

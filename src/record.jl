@@ -78,7 +78,7 @@ function Base.copy(d::BeForRecord)
 end
 
 Base.propertynames(::BeForRecord) = (:dat, :sampling_rate, :time_column, :sessions,
-	:meta, :n_samples, :force_cols :n_forces, :n_sessions)
+	:meta, :n_samples, :force_cols, :n_forces)
 function Base.getproperty(d::BeForRecord, s::Symbol)
 	if s === :n_samples
 		return nrow(d.dat)
@@ -86,8 +86,6 @@ function Base.getproperty(d::BeForRecord, s::Symbol)
 		return findall(names(d.dat) .!= d.time_column)
 	elseif s === :n_forces
 		return length(d.force_cols)
-	elseif s === :n_sessions
-		return length(d.sessions)
 	else
 		return getfield(d, s)
 	end
@@ -95,8 +93,7 @@ end
 
 function split_sessions(d::BeForRecord)
 	rtn = BeForRecord[]
-	for x in 1:d.n_sessions
-		idx = session_rows(d, x)
+	for idx in session_samples(d)
 		dat = BeForRecord(d.dat[idx, :], d.sampling_rate, d.time_column, nothing, d.meta)
 		push!(rtn, dat)
 	end
@@ -106,7 +103,7 @@ end
 function time_stamps(d::BeForRecord;
 	session::Union{Nothing, Int} = nothing)
 
-	idx = isnothing(session) ? (1:nrow(d.dat)) : session_rows(d, session)
+	idx = isnothing(session) ? (1:nrow(d.dat)) : session_samples(d, session)
 
 	if length(d.time_column) > 0
 		return d.dat[idx, d.time_column]
@@ -120,7 +117,7 @@ end
 function forces(d::BeForRecord;
 	session::Union{Nothing, Int} = nothing)
 
-	idx = isnothing(session) ? (1:nrow(d.dat)) : session_rows(d, session)
+	idx = isnothing(session) ? (1:nrow(d.dat)) : session_samples(d, session)
 	return d.dat[idx, d.force_cols]
 end
 
@@ -139,11 +136,16 @@ function write_feather(d::BeForRecord, filepath::AbstractString;
 	Arrow.write(filepath, d.dat; compress, metadata = merge(schema, d.meta))
 end
 
-function session_rows(d::BeForRecord, session::Int)
-	# helper function
-	t = session + 1 > length(d.sessions) ? nrow(d.dat) : d.sessions[session+1]
+
+"""returns row range of session
+"""
+function session_samples(d::BeForRecord, session::Int)
+	t = (session + 1) > length(d.sessions) ? nrow(d.dat) : d.sessions[session+1]-1
 	return d.sessions[session]:t
 end
+
+session_samples(d::BeForRecord) = [session_samples(d, s) for s in 1:length(d.sessions)]
+
 
 """returns sample index (i) of the closes time in the BeForRecord.
 		Takes the next larger element, if the exact time could not be found.
@@ -158,7 +160,7 @@ end;
 
 function Base.show(io::IO, mime::MIME"text/plain", x::BeForRecord)
 	println(io, "BeForRecord")
-	println(io, "  sampling_rate: $(x.sampling_rate), n sessions: $(x.n_sessions) ")
+	println(io, "  sampling_rate: $(x.sampling_rate), n sessions: $(length(x.sessions)) ")
 	println(io, "  time_column $(x.time_column)")
 	println(io, "  metadata")
 	for (k, v) in x.meta

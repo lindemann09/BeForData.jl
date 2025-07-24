@@ -25,8 +25,7 @@ function lowpass_filter(d::BeForRecord;
 
 	df = copy(d.dat)
 	sampling_rate = d.sampling_rate
-	for s in 1:d.n_sessions
-		r = session_rows(d, s)
+	for r in session_samples(d)
 		for c in d.force_cols
 			df[r, c] = lowpass_filter(df[r, c]; sampling_rate,
 				cutoff, butterworth_order, center_data)
@@ -68,8 +67,7 @@ TODO
 function moving_average(d::BeForRecord, window_size::Int)
 
 	df = copy(d.dat)
-	for s in 1:d.n_sessions
-		r = session_rows(d, s)
+	for r in session_samples(d)
 		for c in d.force_cols
 			df[r, c] = moving_average(df[r, c], window_size)
 		end
@@ -88,8 +86,7 @@ TODO
 function detrend(d::BeForRecord, window_size::Int)
 
 	df = copy(d.dat)
-	for s in 1:d.n_sessions
-		r = session_rows(d, s)
+	for r in session_samples(d)
 		for c in d.force_cols
 			@inbounds df[r, c] = df[r, c] .- moving_average(df[r, c], window_size)
 		end
