@@ -136,7 +136,6 @@ function write_feather(d::BeForRecord, filepath::AbstractString;
 	Arrow.write(filepath, d.dat; compress, metadata = merge(schema, d.meta))
 end
 
-
 """returns sample range of session
 """
 function session_range(d::BeForRecord, session::Int)

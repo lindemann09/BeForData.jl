@@ -32,10 +32,9 @@ function lowpass_filter(d::BeForRecord;
 		end
 	end
 
-	filter_info = Dict("filter" => Dict("type"=> "butterworth",
-										"cutoff" => cutoff, "order" => order))
-	return BeForRecord(df, d.sampling_rate, d.time_column, d.sessions,
-							merge(d.meta, filter_info))
+	meta = copy(d.meta)
+	meta["filter"] = "butterworth: cutoff="*string(cutoff)*", order="*string(order)
+	return BeForRecord(df, d.sampling_rate, d.time_column, d.sessions, meta)
 end;
 
 
