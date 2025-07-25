@@ -93,7 +93,7 @@ end
 
 function split_sessions(d::BeForRecord)
 	rtn = BeForRecord[]
-	for idx in session_samples(d)
+	for idx in session_range(d)
 		dat = BeForRecord(d.dat[idx, :], d.sampling_rate, d.time_column, nothing, d.meta)
 		push!(rtn, dat)
 	end
@@ -103,7 +103,7 @@ end
 function time_stamps(d::BeForRecord;
 	session::Union{Nothing, Int} = nothing)
 
-	idx = isnothing(session) ? (1:nrow(d.dat)) : session_samples(d, session)
+	idx = isnothing(session) ? (1:nrow(d.dat)) : session_range(d, session)
 
 	if length(d.time_column) > 0
 		return d.dat[idx, d.time_column]
@@ -117,7 +117,7 @@ end
 function forces(d::BeForRecord;
 	session::Union{Nothing, Int} = nothing)
 
-	idx = isnothing(session) ? (1:nrow(d.dat)) : session_samples(d, session)
+	idx = isnothing(session) ? (1:nrow(d.dat)) : session_range(d, session)
 	return d.dat[idx, d.force_cols]
 end
 
@@ -137,14 +137,14 @@ function write_feather(d::BeForRecord, filepath::AbstractString;
 end
 
 
-"""returns row range of session
+"""returns sample range of session
 """
-function session_samples(d::BeForRecord, session::Int)
+function session_range(d::BeForRecord, session::Int)
 	t = (session + 1) > length(d.sessions) ? nrow(d.dat) : d.sessions[session+1]-1
 	return d.sessions[session]:t
 end
 
-session_samples(d::BeForRecord) = [session_samples(d, s) for s in 1:length(d.sessions)]
+session_range(d::BeForRecord) = [session_range(d, s) for s in 1:length(d.sessions)]
 
 
 """returns sample index (i) of the closes time in the BeForRecord.
