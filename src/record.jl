@@ -12,31 +12,20 @@ struct BeForRecord
 
 	function BeForRecord(dat::DataFrame,
 				sampling_rate::Real,
-				time_column::Union{Nothing, String},
-				sessions::Union{Nothing, AbstractVector{Int}},
+				time_column::String,
+				sessions::AbstractVector{Int},
 				meta::Dict{String, Any})
 
-		if isnothing(time_column)
-			time_column = ""
-		else
-			if time_column ∉ names(dat)
-				throw(ArgumentError("'$time_column' not in dataframe"))
-			end
-		end
 
 		for c in findall(names(dat) .!= time_column) # convert to Data to Float64
 			dat[!, c] = convert.(Float64, dat[!, c])
 		end
 
-		if isnothing(sessions)
-			sessions = nrow(dat) > 0 ? [1] : Int[]
-		else
-			sessions = collect(sessions)
-			if sessions[1] > 1
-				pushfirst!(sessions, 1)
-			elseif sessions[1] < 1
-				sessions[1] = 1
-			end
+		sessions = collect(sessions)
+		if sessions[1] > 1
+			pushfirst!(sessions, 1)
+		elseif sessions[1] < 1
+			sessions[1] = 1
 		end
 		new(disallowmissing(dat, error=false), sampling_rate, time_column,
 			sessions, meta)
@@ -44,28 +33,41 @@ struct BeForRecord
 end;
 
 function BeForRecord(dat::DataFrame,
-	sampling_rate::Real;
-	time_column::Union{Nothing, String} = nothing,
-	sessions::Union{Nothing, AbstractVector{Int}} = nothing,
-	meta::Dict = Dict{String, Any}())
+				sampling_rate::Real;
+				time_column::Union{Nothing, String} = nothing,
+				sessions::Union{Nothing, AbstractVector{Int}} = nothing,
+				meta::Dict = Dict{String, Any}())
+	if isnothing(time_column)
+		time_column = ""
+	else
+		if time_column ∉ names(dat)
+			throw(ArgumentError("'$time_column' not in dataframe"))
+		end
+	end
+	if isnothing(sessions)
+		sessions = nrow(dat) > 0 ? [1] : Int[]
+	end
 	return BeForRecord(dat, Float64(sampling_rate), time_column, sessions, meta)
 end
 
-function BeForRecord(arrow_table::Arrow.Table)
+function BeForRecord(arrow_table::Arrow.Table;
+			sampling_rate::Union{Nothing, Real} = nothing,
+			time_column::Union{Nothing, String} = nothing,
+			sessions::Union{Nothing, AbstractVector{Int}}=nothing)
 	meta = Dict{String, Any}()
-	sampling_rate = 0
-	sessions = []
-	time_column = ""
 	for (k, v) in Arrow.getmetadata(arrow_table)
-		if k == "sampling_rate"
+		if isnothing(sampling_rate) && k == "sampling_rate"
 			sampling_rate = parse(Float64, v)
-		elseif k == "sessions"
+		elseif isnothing(sessions) &&  k == "sessions"
 			sessions = parse.(Int, split(v, ","))
-		elseif k == "time_column"
+		elseif isnothing(time_column) && k == "time_column"
 			time_column = v
 		else
 			push!(meta, k => v)
 		end
+	end
+	if isnothing(sampling_rate)
+		throw(ArgumentError("No sampling rate defined!"))
 	end
 	return BeForRecord(DataFrame(arrow_table), sampling_rate;
 		time_column, sessions, meta)
@@ -94,7 +96,8 @@ end
 function split_sessions(d::BeForRecord)
 	rtn = BeForRecord[]
 	for idx in session_range(d)
-		dat = BeForRecord(d.dat[idx, :], d.sampling_rate, d.time_column, nothing, d.meta)
+		dat = BeForRecord(d.dat[idx, :], d.sampling_rate;
+			time_column = d.time_column, meta = d.meta)
 		push!(rtn, dat)
 	end
 	return rtn

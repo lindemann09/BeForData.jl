@@ -51,6 +51,10 @@ function BeForEpochs(force::Matrix{Float64},
 
 end
 
+
+
+
+
 Base.propertynames(::BeForEpochs) = (:dat, :sampling_rate, :design, :baseline,
 	:zero_sample, :n_samples, :n_epochs, :is_baseline_adjusted)
 function Base.getproperty(x::BeForEpochs, s::Symbol)
@@ -190,3 +194,4 @@ function Base.vcat(d::BeForEpochs, other::BeForEpochs)
 	return BeForEpochs(vcat(d.dat, other.dat), ep.sampling_rate;
 					d.zero_sample, design, baseline)
 end
+
