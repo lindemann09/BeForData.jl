@@ -12,6 +12,7 @@ export BeForRecord,
         write_feather,
         session_range,
         add_session,
+        vcat,
         find_samples_by_time
 
 export BeForEpochs,

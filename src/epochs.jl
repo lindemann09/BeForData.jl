@@ -4,6 +4,8 @@
 TODO
 """
 
+const BSL_COL_NAME = "__befor_baseline__"
+
 struct BeForEpochs
 	dat::Matrix{Float64}
 	sampling_rate::Real
@@ -11,13 +13,16 @@ struct BeForEpochs
 	baseline::Vector{Float64}
 	zero_sample::Int
 
-	function BeForEpochs(force::Matrix{Float64}, sampling_rate::Real, design::DataFrame,
-		baseline::Vector{Float64}, zero_sample::Int)
+	function BeForEpochs(force::Matrix{Float64},
+						sampling_rate::Real,
+						design::DataFrame,
+						baseline::Vector{Float64},
+						zero_sample::Int)
 		lf = size(force, 1)
 		lb = length(baseline)
-		lf == lb || throw(
+		lb == 0 || lf == lb || throw(
 			ArgumentError(
-				"Number of rows of force ($(lf)) must match the length of baseline ($(lb)).",
+				"If base is defined, number of rows of force ($(lf)) must match the length of baseline ($(lb)).",
 			),
 		)
 		n = nrow(design)
@@ -30,12 +35,29 @@ struct BeForEpochs
 	end
 end;
 
+function BeForEpochs(force::Matrix{Float64},
+					sampling_rate::Real;
+					design::Union{Nothing, DataFrame} = nothing,
+					baseline::Union{Nothing, Vector{Float64}} = nothing,
+					zero_sample::Int = 0)
+	if isnothing(baseline)
+		baseline = Float64[]
+	end
+	if isnothing(design)
+		design = DataFrame()
+	end
+	return BeForEpochs(force, sampling_rate, design,
+					baseline, zero_sample)
+
+end
 
 Base.propertynames(::BeForEpochs) = (:dat, :sampling_rate, :design, :baseline,
-	:zero_sample, :n_samples, :n_epochs)
+	:zero_sample, :n_samples, :n_epochs, :is_baseline_adjusted)
 function Base.getproperty(x::BeForEpochs, s::Symbol)
 	if s === :n_epochs
 		return size(x.dat, 1)
+	elseif s === :is_baseline_adjusted
+		return length(x.baseline) > 0
 	elseif s === :n_samples
 		return size(x.dat, 2)
 	else
@@ -57,7 +79,11 @@ function Base.show(io::IO, mime::MIME"text/plain", x::BeForEpochs)
 	println(io, "BeForEpochs")
 	println(io, "  $(x.n_epochs) epochs")
 	println(io, "  $(x.n_samples) samples, sampling rate: $(x.sampling_rate), zero sample: $(x.zero_sample)")
-	print(io, "  Design: $(names(x.design))")
+	if nrow(x.design) > 0
+		print(io, "  Design: $(names(x.design))")
+	else
+		print(io, "  No design information")
+	end
 end
 
 ## processing
@@ -118,8 +144,8 @@ function extract_epochs(d::BeForRecord,
 	if isnothing(design)
 		design = DataFrame()
 	end
-	return BeForEpochs(force_mtx, d.sampling_rate, copy(design),
-		zeros(Float64, n_epochs), n_samples_before + 1)
+	return BeForEpochs(force_mtx, d.sampling_rate; design=copy(design),
+		baseline=nothing, zero_sample = n_samples_before + 1)
 end;
 
 """
@@ -128,10 +154,39 @@ end;
 TODO
 """
 function adjust_baseline!(d::BeForEpochs, baseline_window::UnitRange{<:Integer})
-	dat = d.dat .+ d.baseline
-	bsl = mean(d.dat[:, baseline_window], dims = 2)
+	if length(d.baseline) > 0
+		dat = d.dat .+ d.baseline
+	else
+		dat = d.dat
+	end
+	bsl = mean(dat[:, baseline_window], dims = 2)
 	d.dat[:, :] .= dat .- bsl
-	d.baseline[:] .= bsl
+	if length(d.baseline) > 0
+		d.baseline[:] .= bsl
+	else
+		append!(d.baseline, bsl)
+	end
 	return d
 end
 
+function Base.vcat(d::BeForEpochs, other::BeForEpochs)
+	if other.n_samples != d.n_samples
+		throw(ArgumentError("Number of samples per epoch must match (got $(d.n_samples) and $(other.n_samples))."))
+	end
+	if other.sampling_rate != d.sampling_rate
+		throw(ArgumentError("Sampling rates must match (got $(d.sampling_rate) and $(other.sampling_rate))."))
+	end
+	if other.zero_sample != d.zero_sample
+		throw(ArgumentError("Zero sample indices must match (got $(d.zero_sample) and $(other.zero_sample))."))
+	end
+	if other.is_baseline_adjusted != d.is_baseline_adjusted
+		throw(ArgumentError("One data structure is baseline adjusted, the other not."))
+	end
+	if any(names(other.design) .!= names(d.design))
+		throw(ArgumentError("Design column names are not the same."))
+	end
+	baseline = vcat(d.baseline, other.baseline)
+	design = vcat(d.design, other.design)
+	return BeForEpochs(vcat(d.dat, other.dat), ep.sampling_rate;
+					d.zero_sample, design, baseline)
+end
