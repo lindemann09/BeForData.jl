@@ -1,23 +1,28 @@
 name = "BeForData"
 uuid = "49581401-e3b0-43cb-bb9c-49750952130d"
 authors = ["Oliver Lindemann"]
-version = "0.3-dev4"
+version = "0.3.0-dev4"
 
 [deps]
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+EzXML = "8f5d6c58-4d21-5cfd-889c-e3ad7ee6a615"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [weakdeps]
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
+XDF = "31bc19ec-0089-417f-990e-a2b5e7515868"
 
 [extensions]
 ArrowExt = ["Arrow"]
+XdfExt =["XDF"]
 
 [compat]
 Arrow = "2.8"
-DataFrames = "1.7"
 DSP = "0.8"
+DataFrames = "1.7"
+EzXML = "1.2.2"
+XDF = "0.2.0"
 julia = "1.10"
 
 [extras]

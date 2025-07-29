@@ -27,8 +27,14 @@ include("record.jl")
 include("epochs.jl")
 include("preprocessing.jl")
 
-## Arrow (using Arrow)
+## Arrow support (requires Arrow)
 function write_feather end
 export write_feather
+
+## XDF support (requires XDF and EzXML)
+function xdf_data end
+function xdf_channel_info end
+export xdf_data, xdf_channel_info
+
 
 end

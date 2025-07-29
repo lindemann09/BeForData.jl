@@ -81,11 +81,13 @@ function BeForData.write_feather(d::BeForRecord, filepath::AbstractString;
 	schema = Dict([
 		"sampling_rate" => string(d.sampling_rate),
 		"time_column" => d.time_column,
-		"sessions" => join([string(x) for x in d.sessions], ",")])
-	Arrow.write(filepath, d.dat; compress, metadata = merge(schema, d.meta))
+		"sessions" => join(string.(d.sessions), ",")
+	])
+	metadata = merge(schema, values_to_string(d.meta))
+	Arrow.write(filepath, d.dat; compress, metadata)
 end
 
-function write_feather(d::BeForEpochs, filepath::AbstractString;
+function BeForData.write_feather(d::BeForEpochs, filepath::AbstractString;
 	compress::Any = :zstd)
 
 	schema = Dict([
@@ -102,6 +104,17 @@ function write_feather(d::BeForEpochs, filepath::AbstractString;
 	Arrow.write(filepath, df; compress, metadata = schema)
 end
 
+function values_to_string(d::Dict)
+    rtn = copy(d)
+    for (key, value) in rtn
+        if value isa AbstractVector
+            rtn[key] = join(string.(value), ",")
+        else
+            rtn[key] = string(value)
+        end
+    end
+    return rtn
+end
 
 
 end
