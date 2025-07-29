@@ -1,15 +1,13 @@
 module BeForData
 
-using Arrow
-using DataFrames
-using DSP
 using Statistics: mean
+using DataFrames
+using DSP: Lowpass, filtfilt, Butterworth, digitalfilter
 
 export BeForRecord,
         forces,
         time_stamps,
         split_sessions,
-        write_feather,
         session_range,
         add_session,
         vcat,
@@ -28,5 +26,9 @@ export scale_force!,
 include("record.jl")
 include("epochs.jl")
 include("preprocessing.jl")
+
+## Arrow (using Arrow)
+function write_feather end
+export write_feather
 
 end

@@ -50,29 +50,6 @@ function BeForRecord(dat::DataFrame,
 	return BeForRecord(dat, Float64(sampling_rate), time_column, sessions, meta)
 end
 
-function BeForRecord(arrow_table::Arrow.Table;
-			sampling_rate::Union{Nothing, Real} = nothing,
-			time_column::Union{Nothing, String} = nothing,
-			sessions::Union{Nothing, AbstractVector{Int}}=nothing)
-	meta = Dict{String, Any}()
-	for (k, v) in Arrow.getmetadata(arrow_table)
-		if isnothing(sampling_rate) && k == "sampling_rate"
-			sampling_rate = parse(Float64, v)
-		elseif isnothing(sessions) &&  k == "sessions"
-			sessions = parse.(Int, split(v, ","))
-		elseif isnothing(time_column) && k == "time_column"
-			time_column = v
-		else
-			push!(meta, k => v)
-		end
-	end
-	if isnothing(sampling_rate)
-		throw(ArgumentError("No sampling rate defined!"))
-	end
-	return BeForRecord(DataFrame(arrow_table), sampling_rate;
-		time_column, sessions, meta)
-end
-
 
 function Base.copy(d::BeForRecord)
 	return BeForRecord(copy(d.dat), d.sampling_rate, d.time_column,
@@ -130,14 +107,6 @@ function add_session(d::BeForRecord, session_data::DataFrame)
 	return BeForRecord(dat, d.sampling_rate, d.time_column, sessions, d.meta)
 end
 
-function write_feather(d::BeForRecord, filepath::AbstractString;
-	compress::Any = :zstd)
-	schema = Dict([
-		"sampling_rate" => string(d.sampling_rate),
-		"time_column" => d.time_column,
-		"sessions" => join([string(x) for x in d.sessions], ",")])
-	Arrow.write(filepath, d.dat; compress, metadata = merge(schema, d.meta))
-end
 
 """returns sample range of session
 """

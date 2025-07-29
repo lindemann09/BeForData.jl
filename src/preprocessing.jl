@@ -3,6 +3,8 @@ function scale_force!(d::BeForRecord, factor::Real)
 	return d
 end
 
+## LOWPASS FILTER using DSP
+
 function lowpass_filter(dat::AbstractVector{<:AbstractFloat};
 	sampling_rate::Real,
 	cutoff::Real,
@@ -37,7 +39,6 @@ function lowpass_filter(d::BeForRecord;
 	return BeForRecord(df, d.sampling_rate, d.time_column, d.sessions, meta)
 end;
 
-
 function moving_average(dat::AbstractVector{<:AbstractFloat},
                         window_size::Int64)
     rtn = similar(dat)
@@ -57,7 +58,6 @@ function moving_average(dat::AbstractVector{<:AbstractFloat},
     end
     return rtn
 end
-
 
 """
 	moving_average!(fd::BeForRecord; window_size::Int)
@@ -95,8 +95,6 @@ function detrend(d::BeForRecord, window_size::Int)
 	return BeForRecord(df, d.sampling_rate, d.time_column, d.sessions,
                     merge(d.meta, meta))
 end;
-
-
 
 function detect_sessions()
 	# TODO

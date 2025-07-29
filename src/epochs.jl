@@ -4,8 +4,6 @@
 TODO
 """
 
-const BSL_COL_NAME = "__befor_baseline__"
-
 struct BeForEpochs
 	dat::Matrix{Float64}
 	sampling_rate::Real
@@ -49,49 +47,6 @@ function BeForEpochs(force::Matrix{Float64},
 	return BeForEpochs(force, sampling_rate, design,
 					baseline, zero_sample)
 
-end
-
-function BeForEpochs(arrow_table::Arrow.Table;
-			sampling_rate::Union{Nothing, Real}=nothing,
-			zero_sample::Union{Nothing, Int}=nothing,
-			)
-	for (k, v) in Arrow.getmetadata(arrow_table)
-		if isnothing(sampling_rate) && k == "sampling_rate"
-			sampling_rate = parse(Float64, v)
-		elseif isnothing(zero_sample) && k == "zero_sample"
-			zero_sample = parse(Int64, v)
-		end
-	end
-	if isnothing(sampling_rate)
-		throw(ArgumentError("No sampling rate defined!"))
-	end
-	if isnothing(zero_sample)
-		zero_sample = 0
-	end
-
-	dat = DataFrame(arrow_table)
-	if BSL_COL_NAME in names(dat)
-		baseline = dat[:, BSL_COL_NAME]
-	else
-		baseline = Float64[]
-	end
-	# count columns_name that have not int as name
-	n_epoch_samples = ncol(dat)
-	for cn in reverse(names(dat))
-			try
-				parse(Int, cn)
-				break
-			catch e
-				if e isa ArgumentError
-					n_epoch_samples -= 1
-				else
-					rethrow(e)
-				end
-			end
-	end
-	design = dat[:, n_epoch_samples+1:ncol(dat)]
-	mtx = Matrix{Float64}(dat[:, 1:n_epoch_samples])
-	BeForEpochs(mtx, sampling_rate, design, baseline, zero_sample)
 end
 
 
@@ -235,19 +190,3 @@ function Base.vcat(d::BeForEpochs, other::BeForEpochs)
 				baseline, d.zero_sample)
 end
 
-function write_feather(d::BeForEpochs, filepath::AbstractString;
-	compress::Any = :zstd)
-
-	schema = Dict([
-		"sampling_rate" => string(d.sampling_rate),
-		"zero_sample" => string(d.zero_sample)])
-
-	# build dataframe
-	cn = [string(x) for x in 1:d.dat.size[2]] # column names for data
-	df = hcat(DataFrame(d.dat, cn), d.design)
-	if d.is_baseline_adjusted
-		df[!, BSL_COL_NAME] = d.baseline
-	end
-
-	Arrow.write(filepath, df; compress, metadata = schema)
-end
