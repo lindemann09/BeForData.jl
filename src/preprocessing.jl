@@ -1,10 +1,22 @@
-function scale_force!(d::BeForRecord, factor::Real)
-	d.dat[!, d.force_cols] = d.dat[!, d.force_cols] .* factor
-	return d
+"""
+	scale_force!(fd::BeForRecord, factor::Real)
+	scale_force!(fd::BeForEpochs, factor::Real)
+
+	TODO
+"""
+function scale_force!(fd::BeForRecord, factor::Real)
+	idx = fd.force_cols
+	fd.dat[:, idx] = fd.dat[:, idx] .* factor
+	return fd
+end
+
+function scale_force!(fd::BeForEpochs, factor::Real)
+	fd.dat[:, :] = fd.dat .* factor
+	fd.baseline[:] = fd.baseline[:] .* factor
+	return fd
 end
 
 ## LOWPASS FILTER using DSP
-
 function lowpass_filter(dat::AbstractVector{<:AbstractFloat};
 	sampling_rate::Real,
 	cutoff::Real,

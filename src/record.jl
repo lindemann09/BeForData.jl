@@ -9,6 +9,7 @@ struct BeForRecord
 	time_column::String
 	sessions::Vector{Int}
 	meta::Dict{String, Any}
+	force_cols::AbstractVector{Int} # set by constructor
 
 	function BeForRecord(dat::DataFrame,
 				sampling_rate::Real,
@@ -16,8 +17,9 @@ struct BeForRecord
 				sessions::AbstractVector{Int},
 				meta::Dict{String, Any})
 
+		force_cols = findall(names(dat) .!= time_column)
 
-		for c in findall(names(dat) .!= time_column) # convert to Data to Float64
+		for c in force_cols # convert to Data to Float64
 			dat[!, c] = convert.(Float64, dat[!, c])
 		end
 
@@ -28,7 +30,7 @@ struct BeForRecord
 			sessions[1] = 1
 		end
 		new(disallowmissing(dat, error=false), sampling_rate, time_column,
-			sessions, meta)
+			sessions, meta, force_cols)
 	end
 end;
 
@@ -50,19 +52,16 @@ function BeForRecord(dat::DataFrame,
 	return BeForRecord(dat, Float64(sampling_rate), time_column, sessions, meta)
 end
 
-
 function Base.copy(d::BeForRecord)
 	return BeForRecord(copy(d.dat), d.sampling_rate, d.time_column,
 		copy(d.sessions), copy(d.meta))
 end
 
 Base.propertynames(::BeForRecord) = (:dat, :sampling_rate, :time_column, :sessions,
-	:meta, :n_samples, :force_cols, :n_forces)
+	:meta, :force_cols, :n_samples, :n_forces)
 function Base.getproperty(d::BeForRecord, s::Symbol)
 	if s === :n_samples
 		return nrow(d.dat)
-	elseif s === :force_cols
-		return findall(names(d.dat) .!= d.time_column)
 	elseif s === :n_forces
 		return length(d.force_cols)
 	else
