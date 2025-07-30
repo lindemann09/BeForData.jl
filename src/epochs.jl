@@ -188,7 +188,7 @@ function Base.vcat(d::BeForEpochs, other::BeForEpochs)
 	end
 	baseline = vcat(d.baseline, other.baseline)
 	design = vcat(d.design, other.design)
-	return BeForEpochs(vcat(d.dat, other.dat), ep.sampling_rate, design,
+	return BeForEpochs(vcat(d.dat, other.dat), d.sampling_rate, design,
 				baseline, d.zero_sample)
 end
 
