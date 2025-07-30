@@ -10,10 +10,10 @@ export BeForRecord,
         split_sessions,
         session_range,
         add_session,
-        vcat,
         find_samples_by_time
 
 export BeForEpochs,
+        vcat,
         extract_epochs,
         adjust_baseline!
 
