@@ -85,6 +85,8 @@ function Base.show(io::IO, mime::MIME"text/plain", x::BeForEpochs)
 	end
 end
 
+forces(d::BeForEpochs) = d.dat
+
 ## processing
 """
 	extract_epochs(d::BeForRecord, column::Union{Symbol, String};
