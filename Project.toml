@@ -1,7 +1,7 @@
 name = "BeForData"
 uuid = "49581401-e3b0-43cb-bb9c-49750952130d"
 authors = ["Oliver Lindemann"]
-version = "0.3.0-dev4"
+version = "0.3.0"
 
 [deps]
 DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
