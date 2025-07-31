@@ -118,26 +118,42 @@ forces(d::BeForEpochs) = d.dat
 """
 function extract_epochs(d::BeForRecord,
 	column::Union{Symbol, String, Int};
-	zero_samples::AbstractVector{<:Integer},
+	zero_samples::Union{Nothing, AbstractVector{<:Integer}} = nothing,
+	zero_times::Union{Nothing, AbstractVector{<:Real}} = nothing,
 	n_samples::Integer,
 	n_samples_before::Integer,
 	design::Union{Nothing, DataFrame}=nothing
 )
+	(isnothing(zero_samples) && isnothing(zero_times)) && throw(
+		ArgumentError("Define either the samples or times where to extract the epochs " *
+						"(i.e. parameter zero_samples or zero_time)"))
+
+	(isnothing(zero_samples) != isnothing(zero_times)) || throw(
+		ArgumentError("Define only one the samples or times where to extract the epochs, " *
+						"not both."))
+
+	if !isnothing(zero_times)
+		ts = time_stamps(d)
+		zero_samples = [_find_larger_or_equal(zt, ts) for zt in zero_times]
+		return extract_epochs(d, column; zero_samples, n_samples,
+					n_samples_before, design)
+	end
+
 	dat  = d.dat[:, column]
-	samples_fd = nrow(d.dat)
+	samples_fd = d.n_samples # samples for data
 	n_epochs = length(zero_samples)
 	ncol = n_samples_before + n_samples
 	force_mtx = Matrix{Float64}(undef, n_epochs, ncol)
-	for (r, i) in enumerate(zero_samples)
-        f = i - n_samples_before
-        if f < samples_fd
-            t = i + n_samples - 1
-            if t > samples_fd
+	for (r, sz) in enumerate(zero_samples)
+        from = sz - n_samples_before
+        if from < samples_fd
+            to = sz + n_samples - 1
+            if to > samples_fd
                 @warn string("extract epochs: last force epoch is incomplete, ",
-                            t-samples_fd, " samples missing.")
-                force_mtx[r, :] .= vcat(dat[f:samples_fd], zeros(Float64, t - samples_fd))
+                            to-samples_fd, " samples missing.")
+                force_mtx[r, :] .= vcat(dat[from:samples_fd], zeros(Float64, to - samples_fd))
             else
-                force_mtx[r, :] .= dat[f:t]
+                force_mtx[r, :] .= dat[from:to]
             end
         end
     end
@@ -192,3 +208,14 @@ function Base.vcat(d::BeForEpochs, other::BeForEpochs)
 				baseline, d.zero_sample)
 end
 
+### helper functions
+function _find_larger_or_equal(needle::Real, sorted_array::AbstractVector{<:Real})
+	cnt::Int = 0
+	for x in sorted_array
+		cnt = cnt + 1
+		if x >= needle
+			return cnt
+		end
+	end
+	return nothing
+end;
