@@ -17,6 +17,7 @@ function scale_force!(fd::BeForEpochs, factor::Real)
 end
 
 ## LOWPASS FILTER using DSP
+
 function lowpass_filter(dat::AbstractVector{<:AbstractFloat};
 	sampling_rate::Real,
 	cutoff::Real,
@@ -50,6 +51,29 @@ function lowpass_filter(d::BeForRecord;
 	meta["filter"] = "butterworth: cutoff="*string(cutoff)*", order="*string(order)
 	return BeForRecord(df, d.sampling_rate, d.time_column, d.sessions, meta)
 end;
+
+function lowpass_filter(fe::BeForEpochs;
+	cutoff::Real,
+	order::Integer = 4,
+	center_data::Bool = true,
+	suppress_warning::Bool = false
+)
+	suppress_warning || @warn "It's suggested to filter the data (i.e. BeForRecord) " *
+		"before creating epochs, because each epoch will be filter individually. " *
+		"This might causes artifacts"
+
+	rtn = copy(fe)
+	sampling_rate = rtn.sampling_rate
+	for row in eachrow(rtn.dat)
+		row[:] = lowpass_filter(vec(row);
+			sampling_rate, cutoff, order, center_data)
+	end
+	return rtn
+end;
+
+
+
+
 
 function moving_average(dat::AbstractVector{<:AbstractFloat},
                         window_size::Int64)
