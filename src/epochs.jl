@@ -90,7 +90,8 @@ forces(d::BeForEpochs) = d.dat
 ## processing
 """
 	extract_epochs(d::BeForRecord, column::Union{Symbol, String};
-		zero_samples::AbstractVector{<:Integer},
+		zero_samples::Union{Nothing, AbstractVector{<:Integer}} = nothing,
+		zero_times::Union{Nothing, AbstractVector{<:Real}} = nothing,
 		n_samples::Integer,
         n_samples_before::Integer,
         design::Union{Nothing, DataFrame}=nothing)
@@ -101,7 +102,9 @@ forces(d::BeForEpochs) = d.dat
 			the data
     	column: str
             name of column containing the force data to be used
-        zero_samples: List[int]
+        zero_samples: List[int], optional
+            zero sample that define the epochs
+        zero_times: List[int], optional
             zero sample that define the epochs
         n_samples: int
             number of samples to be extract (from zero sample on)
@@ -209,6 +212,10 @@ function Base.vcat(d::BeForEpochs, other::BeForEpochs)
 end
 
 ### helper functions
+"""Takes the next larger element, if the exact time could not be found.
+
+.. math:: \\text{time_stamps}[i-1] <= t < \\text{time_stamps}[i]
+"""
 function _find_larger_or_equal(needle::Real, sorted_array::AbstractVector{<:Real})
 	cnt::Int = 0
 	for x in sorted_array
