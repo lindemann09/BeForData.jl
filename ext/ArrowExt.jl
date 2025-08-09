@@ -8,16 +8,22 @@ export write_feather
 
 const BSL_COL_NAME = "__befor_baseline__"
 
+"""
+Arrow data format use 0-based index. The session information 
+will be therefor converted to 1-based indexing as used in Julia.
+"""
 function BeForData.BeForRecord(arrow_table::Arrow.Table;
 			sampling_rate::Union{Nothing, Real} = nothing,
 			time_column::Union{Nothing, String} = nothing,
 			sessions::Union{Nothing, AbstractVector{Int}}=nothing)
+	
+	
 	meta = Dict{String, Any}()
 	for (k, v) in Arrow.getmetadata(arrow_table)
 		if isnothing(sampling_rate) && k == "sampling_rate"
 			sampling_rate = parse(Float64, v)
 		elseif isnothing(sessions) &&  k == "sessions"
-			sessions = parse.(Int, split(v, ","))
+			sessions = parse.(Int, split(v, ",")) .+ 1
 		elseif isnothing(time_column) && k == "time_column"
 			time_column = v
 		else
@@ -31,7 +37,10 @@ function BeForData.BeForRecord(arrow_table::Arrow.Table;
 		time_column, sessions, meta)
 end
 
-
+"""
+Arrow data format use 0-based index. The zero_sample 
+will be therefor converted to 1-based indexing as used in Julia.
+"""
 function BeForData.BeForEpochs(arrow_table::Arrow.Table;
 			sampling_rate::Union{Nothing, Real}=nothing,
 			zero_sample::Union{Nothing, Int}=nothing,
@@ -40,14 +49,14 @@ function BeForData.BeForEpochs(arrow_table::Arrow.Table;
 		if isnothing(sampling_rate) && k == "sampling_rate"
 			sampling_rate = parse(Float64, v)
 		elseif isnothing(zero_sample) && k == "zero_sample"
-			zero_sample = parse(Int64, v)
+			zero_sample = parse(Int64, v) + 1
 		end
 	end
 	if isnothing(sampling_rate)
 		throw(ArgumentError("No sampling rate defined!"))
 	end
 	if isnothing(zero_sample)
-		zero_sample = 0
+		zero_sample = 1
 	end
 
 	dat = DataFrame(arrow_table)
@@ -76,23 +85,31 @@ function BeForData.BeForEpochs(arrow_table::Arrow.Table;
 	BeForEpochs(mtx, sampling_rate, design, baseline, zero_sample)
 end
 
+"""
+Arrow data format use 0-based index. The session information 
+will be therefor converted.
+"""
 function BeForData.write_feather(d::BeForRecord, filepath::AbstractString;
 	compress::Any = :zstd)
 	schema = Dict([
 		"sampling_rate" => string(d.sampling_rate),
 		"time_column" => d.time_column,
-		"sessions" => join(string.(d.sessions), ",")
+		"sessions" => join(string.(d.sessions .- 1), ",")
 	])
 	metadata = merge(schema, values_to_string(d.meta))
 	Arrow.write(filepath, d.dat; compress, metadata)
 end
 
+"""
+Arrow data format use 0-based index. The zero_sample 
+will be therefor converted.
+"""
 function BeForData.write_feather(d::BeForEpochs, filepath::AbstractString;
 	compress::Any = :zstd)
 
 	schema = Dict([
 		"sampling_rate" => string(d.sampling_rate),
-		"zero_sample" => string(d.zero_sample)])
+		"zero_sample" => string(d.zero_sample - 1)])
 
 	# build dataframe
 	cn = [string(x) for x in 1:d.dat.size[2]] # column names for data

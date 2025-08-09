@@ -37,7 +37,7 @@ function BeForEpochs(force::Matrix{Float64},
 					sampling_rate::Real;
 					design::Union{Nothing, DataFrame} = nothing,
 					baseline::Union{Nothing, Vector{Float64}} = nothing,
-					zero_sample::Int = 0)
+					zero_sample::Int = 1)
 	if isnothing(baseline)
 		baseline = Float64[]
 	end
@@ -215,8 +215,9 @@ end
 """Takes the next larger element, if the exact time could not be found.
 
 .. math:: \\text{time_stamps}[i-1] <= t < \\text{time_stamps}[i]
-"""
+"""	
 function _find_larger_or_equal(needle::Real, sorted_array::AbstractVector{<:Real})
+	#FIXME check if same samples are found as in python, note 1-based indexing
 	cnt::Int = 0
 	for x in sorted_array
 		cnt = cnt + 1
