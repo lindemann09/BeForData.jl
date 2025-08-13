@@ -16,51 +16,50 @@ function scale_force!(fd::BeForEpochs, factor::Real)
 	return fd
 end
 
-## LOWPASS FILTER using DSP
+## FILTER using DSP
+function filtfilt_record(coef::FilterCoefficients, rec::BeForRecord)::BeForRecord
 
-function lowpass_filter(dat::AbstractVector{<:AbstractFloat};
-	sampling_rate::Real,
-	cutoff::Real,
-	order::Integer,
-	center_data::Bool = true
-)
-	myfilter = digitalfilter(Lowpass(cutoff), Butterworth(order);
-					fs = sampling_rate)
-	if center_data
-		return filtfilt(myfilter, dat .- dat[1]) .+ dat[1] # filter centred data
-	else
-		return filtfilt(myfilter, dat)
-	end
-end;
-
-function lowpass_filter(d::BeForRecord;
-	cutoff::Real,
-	order::Integer,
-	center_data::Bool = true)
-
-	df = copy(d.dat)
-	sampling_rate = d.sampling_rate
-	for r in session_range(d)
-		for c in d.force_cols
-			df[r, c] = lowpass_filter(df[r, c]; sampling_rate,
-				cutoff, order, center_data)
+	rtn = copy(rec)
+	for r in session_range(rtn)
+		for c in rtn.force_cols
+			rtn.dat[r, c] = filtfilt(coef, rtn.dat[r, c])
 		end
 	end
+	return rtn
+end
 
-	meta = copy(d.meta)
-	meta["filter"] = "butterworth: cutoff="*string(cutoff)*", order="*string(order)
-	return BeForRecord(df, d.sampling_rate, d.time_column, d.sessions, meta)
-end;
+function filtfilt_record(b::AbstractVector, a::AbstractVector, rec::BeForRecord)::BeForRecord
+
+	rtn = copy(rec)
+	for r in session_range(rtn)
+		for c in rtn.force_cols
+			rtn.dat[r, c] = filtfilt(b, a, rtn.dat[r, c])
+		end
+	end
+	return rtn
+end
+
+function lowpass_filter(rec::BeForRecord;
+	cutoff::Real,
+	order::Integer)
+
+	butter_flt = digitalfilter(Lowpass(cutoff), Butterworth(order);
+		fs = rec.sampling_rate)
+	rtn = filtfilt_record(butter_flt, rec)
+
+	rtn.meta["filter"] = "butterworth: cutoff="*string(cutoff)*", order="*string(order)
+	return rtn
+end
 
 function lowpass_filter(fe::BeForEpochs;
 	cutoff::Real,
 	order::Integer = 4,
 	center_data::Bool = true,
-	suppress_warning::Bool = false
-)
+	suppress_warning::Bool = false,
+) # FIXME old method, maybe remove center_data
 	suppress_warning || @warn "It's suggested to filter the data (i.e. BeForRecord) " *
-		"before creating epochs, because each epoch will be filter individually. " *
-		"This might causes artifacts"
+							  "before creating epochs, because each epoch will be filter individually. " *
+							  "This might causes artifacts"
 
 	rtn = copy(fe)
 	sampling_rate = rtn.sampling_rate
@@ -76,23 +75,23 @@ end;
 
 
 function moving_average(dat::AbstractVector{<:AbstractFloat},
-                        window_size::Int64)
-    rtn = similar(dat)
-    n = length(dat)
-    lower = ceil(Int64, window_size / 2)
-    upper = window_size - lower - 1
-    for x in 1:n
-        f = x - lower
-        if f < 1
-            f = 1
-        end
-        t = x + upper
-        if t > n
-            t = n
-        end
-        @inbounds rtn[x] = mean(dat[f:t])
-    end
-    return rtn
+	window_size::Int64)
+	rtn = similar(dat)
+	n = length(dat)
+	lower = ceil(Int64, window_size / 2)
+	upper = window_size - lower - 1
+	for x in 1:n
+		f = x - lower
+		if f < 1
+			f = 1
+		end
+		t = x + upper
+		if t > n
+			t = n
+		end
+		@inbounds rtn[x] = mean(dat[f:t])
+	end
+	return rtn
 end
 
 """
@@ -108,9 +107,9 @@ function moving_average(d::BeForRecord, window_size::Int)
 			df[r, c] = moving_average(df[r, c], window_size)
 		end
 	end
-	meta =  Dict("Moving average window: " => window_size)
+	meta = Dict("Moving average window: " => window_size)
 	return BeForRecord(df, d.sampling_rate, d.time_column, d.sessions,
-                         merge(d.meta, meta))
+		merge(d.meta, meta))
 end;
 
 
@@ -127,9 +126,9 @@ function detrend(d::BeForRecord, window_size::Int)
 			@inbounds df[r, c] = df[r, c] .- moving_average(df[r, c], window_size)
 		end
 	end
-	meta =  Dict("Detrend window: " => window_size)
+	meta = Dict("Detrend window: " => window_size)
 	return BeForRecord(df, d.sampling_rate, d.time_column, d.sessions,
-                    merge(d.meta, meta))
+		merge(d.meta, meta))
 end;
 
 function detect_sessions()

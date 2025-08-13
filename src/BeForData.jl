@@ -2,7 +2,7 @@ module BeForData
 
 using Statistics: mean
 using DataFrames
-using DSP: Lowpass, filtfilt, Butterworth, digitalfilter
+using DSP
 
 export BeForRecord,
         forces,
@@ -19,6 +19,7 @@ export BeForEpochs,
 
 export scale_force!,
         lowpass_filter,
+        filtfilt_record,
         moving_average,
         detrend,
         detect_sessions
