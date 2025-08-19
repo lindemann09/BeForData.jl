@@ -40,21 +40,23 @@ function BeForData.lowpass_filter(rec::BeForRecord;
 	return rtn
 end
 
+### DEPRECATED METHODS
+
 function BeForData.lowpass_filter(fe::BeForEpochs;
 	cutoff::Real,
 	order::Integer = 4,
-	center_data::Bool = true,
 	suppress_warning::Bool = false,
-) # FIXME old method, maybe remove center_data
+)
 	suppress_warning || @warn "It's suggested to filter the data (i.e. BeForRecord) " *
 							  "before creating epochs, because each epoch will be filter individually. " *
 							  "This might causes artifacts"
 
 	rtn = copy(fe)
-	sampling_rate = rtn.sampling_rate
+	flt = digitalfilter(Lowpass(cutoff), Butterworth(order);
+					fs = rtn.sampling_rate)
 	for row in eachrow(rtn.dat)
-		row[:] = lowpass_filter(vec(row);
-			sampling_rate, cutoff, order, center_data)
+		dat = vec(row)
+		row[:] = filtfilt(flt, dat); # filtfilt(flt, dat .- dat[1]) .+ dat[1] # filter centred data
 	end
 	return rtn
 end;
