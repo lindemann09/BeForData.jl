@@ -12,10 +12,10 @@ struct BeForEpochs
 	zero_sample::Int
 
 	function BeForEpochs(force::Matrix{Float64},
-						sampling_rate::Real,
-						design::DataFrame,
-						baseline::Vector{Float64},
-						zero_sample::Int)
+		sampling_rate::Real,
+		design::DataFrame,
+		baseline::Vector{Float64},
+		zero_sample::Int)
 		lf = size(force, 1)
 		lb = length(baseline)
 		lb == 0 || lf == lb || throw(
@@ -34,10 +34,10 @@ struct BeForEpochs
 end;
 
 function BeForEpochs(force::Matrix{Float64},
-					sampling_rate::Real;
-					design::Union{Nothing, DataFrame} = nothing,
-					baseline::Union{Nothing, Vector{Float64}} = nothing,
-					zero_sample::Int = 1)
+	sampling_rate::Real;
+	design::Union{Nothing, DataFrame} = nothing,
+	baseline::Union{Nothing, Vector{Float64}} = nothing,
+	zero_sample::Int = 1)
 	if isnothing(baseline)
 		baseline = Float64[]
 	end
@@ -45,7 +45,7 @@ function BeForEpochs(force::Matrix{Float64},
 		design = DataFrame()
 	end
 	return BeForEpochs(force, sampling_rate, design,
-					baseline, zero_sample)
+		baseline, zero_sample)
 
 end
 
@@ -93,30 +93,32 @@ forces(d::BeForEpochs) = d.dat
 		zero_samples::Union{Nothing, AbstractVector{<:Integer}} = nothing,
 		zero_times::Union{Nothing, AbstractVector{<:Real}} = nothing,
 		n_samples::Integer,
-        n_samples_before::Integer,
-        design::Union{Nothing, DataFrame}=nothing)
+		n_samples_before::Integer,
+		design::Union{Nothing, DataFrame}=nothing)
 
-        Parameter
-        ---------
+		Parameter
+		---------
 		d: BeForRecord
 			the data
-    	column: str
-            name of column containing the force data to be used
-        zero_samples: List[int], optional
-            zero sample that define the epochs
-        zero_times: List[int], optional
-            zero sample that define the epochs
-        n_samples: int
-            number of samples to be extract (from zero sample on)
-        n_samples_before: int, optional
-            number of samples to be extracted before the zero sample (default=0)
+		column: str
+			name of column containing the force data to be used
+		zero_samples: List[int], optional
+			zero sample that define the epochs
+		zero_times: List[int], optional
+			zero sample that define the epochs
+		n_samples: int
+			number of samples to be extract (from zero sample on)
+		n_samples_before: int, optional
+			number of samples to be extracted before the zero sample (default=0)
+		suppress_warnings : bool, optional (default: False)
+			If true, suppress incomplete epoch warnings during epoch extraction.
 
-        design: pd.DataFrame, optional
-            design information
+		design: pd.DataFrame, optional
+			design information
 
-        Note
-        ----
-        use `find_times` to detect zero samples with time-based
+		Note
+		----
+		use `find_times` to detect zero samples with time-based
 
 """
 function extract_epochs(d::BeForRecord,
@@ -125,47 +127,49 @@ function extract_epochs(d::BeForRecord,
 	zero_times::Union{Nothing, AbstractVector{<:Real}} = nothing,
 	n_samples::Integer,
 	n_samples_before::Integer,
-	design::Union{Nothing, DataFrame}=nothing
+	design::Union{Nothing, DataFrame} = nothing,
+	suppress_warnings::Bool = false,
 )
 	(isnothing(zero_samples) && isnothing(zero_times)) && throw(
 		ArgumentError("Define either the samples or times where to extract the epochs " *
-						"(i.e. parameter zero_samples or zero_time)"))
+					  "(i.e. parameter zero_samples or zero_time)"))
 
 	(isnothing(zero_samples) != isnothing(zero_times)) || throw(
 		ArgumentError("Define only one the samples or times where to extract the epochs, " *
-						"not both."))
+					  "not both."))
 
 	if !isnothing(zero_times)
 		ts = time_stamps(d)
 		zero_samples = [_find_larger_or_equal(zt, ts) for zt in zero_times]
 		return extract_epochs(d, column; zero_samples, n_samples,
-					n_samples_before, design)
+			n_samples_before, design, suppress_warnings)
 	end
 
-	dat  = d.dat[:, column]
+	dat = d.dat[:, column]
 	samples_fd = d.n_samples # samples for data
 	n_epochs = length(zero_samples)
 	ncol = n_samples_before + n_samples
 	force_mtx = Matrix{Float64}(undef, n_epochs, ncol)
 	for (r, sz) in enumerate(zero_samples)
-        from = sz - n_samples_before
-        if from < samples_fd
-            to = sz + n_samples - 1
-            if to > samples_fd
-                @warn string("extract epochs: last force epoch is incomplete, ",
-                            to-samples_fd, " samples missing.")
-                force_mtx[r, :] .= vcat(dat[from:samples_fd], zeros(Float64, to - samples_fd))
-            else
-                force_mtx[r, :] .= dat[from:to]
-            end
-        end
-    end
+		from = sz - n_samples_before
+		if from < samples_fd
+			to = sz + n_samples - 1
+			if to > samples_fd
+				suppress_warnings && @warn "extract epochs: force epoch " * string(r) *
+										   " is incomplete, " * string(to - samples_fd) *
+										   " samples missing."
+				force_mtx[r, :] .= vcat(dat[from:samples_fd], zeros(Float64, to - samples_fd))
+			else
+				force_mtx[r, :] .= dat[from:to]
+			end
+		end
+	end
 
 	if isnothing(design)
 		design = DataFrame()
 	end
 	return BeForEpochs(force_mtx, d.sampling_rate, copy(design),
-						Float64[], n_samples_before + 1)
+		Float64[], n_samples_before + 1)
 end;
 
 """
@@ -208,16 +212,17 @@ function Base.vcat(d::BeForEpochs, other::BeForEpochs)
 	baseline = vcat(d.baseline, other.baseline)
 	design = vcat(d.design, other.design)
 	return BeForEpochs(vcat(d.dat, other.dat), d.sampling_rate, design,
-				baseline, d.zero_sample)
+		baseline, d.zero_sample)
 end
 
 ### helper functions
-"""Takes the next larger element, if the exact time could not be found.
+"""This method searches for the indices in the sorted_array that are equal to or
+the next larger value. If an exact match is not found, the index of the next
+larger time stamp is returned.
 
 .. math:: \\text{time_stamps}[i-1] <= t < \\text{time_stamps}[i]
-"""	
+"""
 function _find_larger_or_equal(needle::Real, sorted_array::AbstractVector{<:Real})
-	#FIXME check if same samples are found as in python, note 1-based indexing
 	cnt::Int = 0
 	for x in sorted_array
 		cnt = cnt + 1
