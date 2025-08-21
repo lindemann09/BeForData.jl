@@ -14,7 +14,8 @@ export BeForRecord,
 export BeForEpochs,
 	vcat,
 	extract_epochs,
-	adjust_baseline!
+	adjust_baseline!,
+	subset
 
 export scale_force!,
 	detect_sessions,

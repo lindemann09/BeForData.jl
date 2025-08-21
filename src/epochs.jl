@@ -215,6 +215,31 @@ function Base.vcat(d::BeForEpochs, other::BeForEpochs)
 		baseline, d.zero_sample)
 end
 
+
+"""
+	subset(fe::BeForEpochs, rows::Base.AbstractVecOrTuple{Integer})
+	subset(fe::BeForEpochs, args...)
+
+TODO
+"""
+function DataFrames.subset(fe::BeForEpochs, rows::Base.AbstractVecOrTuple{Integer})
+	force = fe.dat[rows, :]
+	if length(fe.baseline) > 0
+		bsln = fe.baseline[rows]
+	else
+		bsln = copy(fe.baseline)
+	end
+	subset_design = fe.design[rows, :]
+	return BeForEpochs(force, fe.sampling_rate, subset_design, bsln, fe.zero_sample)
+end
+
+function DataFrames.subset(fe::BeForEpochs, args...)
+	df = copy(fe.design)
+	df.row_xxx .= 1:nrow(df)
+	df = subset(df, args...)
+	return subset(fe, df[:, :row_xxx])
+end
+
 ### helper functions
 """This method searches for the indices in the sorted_array that are equal to or
 the next larger value. If an exact match is not found, the index of the next
