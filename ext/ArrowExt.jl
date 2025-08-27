@@ -9,15 +9,15 @@ export write_feather
 const BSL_COL_NAME = "__befor_baseline__"
 
 """
-Arrow data format use 0-based index. The session information 
+Arrow data format use 0-based index. The session information
 will be therefor converted to 1-based indexing as used in Julia.
 """
 function BeForData.BeForRecord(arrow_table::Arrow.Table;
 			sampling_rate::Union{Nothing, Real} = nothing,
 			time_column::Union{Nothing, String} = nothing,
 			sessions::Union{Nothing, AbstractVector{Int}}=nothing)
-	
-	
+
+
 	meta = Dict{String, Any}()
 	for (k, v) in Arrow.getmetadata(arrow_table)
 		if isnothing(sampling_rate) && k == "sampling_rate"
@@ -38,8 +38,8 @@ function BeForData.BeForRecord(arrow_table::Arrow.Table;
 end
 
 """
-Arrow data format use 0-based index. The zero_sample 
-will be therefor converted to 1-based indexing as used in Julia.
+Arrow data format use 0-based index. The zero_sample
+will be therefore converted to 1-based indexing as used in Julia.
 """
 function BeForData.BeForEpochs(arrow_table::Arrow.Table;
 			sampling_rate::Union{Nothing, Real}=nothing,
@@ -86,8 +86,8 @@ function BeForData.BeForEpochs(arrow_table::Arrow.Table;
 end
 
 """
-Arrow data format use 0-based index. The session information 
-will be therefor converted.
+Arrow data format use 0-based index. The session information
+will be therefore converted.
 """
 function BeForData.write_feather(d::BeForRecord, filepath::AbstractString;
 	compress::Any = :zstd)
@@ -101,8 +101,8 @@ function BeForData.write_feather(d::BeForRecord, filepath::AbstractString;
 end
 
 """
-Arrow data format use 0-based index. The zero_sample 
-will be therefor converted.
+Arrow data format use 0-based index. The zero_sample
+will be therefore converted.
 """
 function BeForData.write_feather(d::BeForEpochs, filepath::AbstractString;
 	compress::Any = :zstd)

@@ -48,8 +48,8 @@ function BeForData.lowpass_filter(fe::BeForEpochs;
 	suppress_warning::Bool = false,
 )
 	suppress_warning || @warn "It's suggested to filter the data (i.e. BeForRecord) " *
-							  "before creating epochs, because each epoch will be filter individually. " *
-							  "This might causes artifacts"
+							  "before creating epochs, because otherwise each epoch will be filtered individually. " *
+							  "This might causes artifacts."
 
 	rtn = copy(fe)
 	flt = digitalfilter(Lowpass(cutoff), Butterworth(order);
