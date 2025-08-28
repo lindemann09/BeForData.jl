@@ -3,6 +3,7 @@ module ArrowExt
 using Arrow
 using DataFrames
 using BeForData
+using JSON
 
 export write_feather
 
@@ -45,11 +46,14 @@ function BeForData.BeForEpochs(arrow_table::Arrow.Table;
 			sampling_rate::Union{Nothing, Real}=nothing,
 			zero_sample::Union{Nothing, Int}=nothing,
 			)
+	meta = Dict{String, Any}()
 	for (k, v) in Arrow.getmetadata(arrow_table)
 		if isnothing(sampling_rate) && k == "sampling_rate"
 			sampling_rate = parse(Float64, v)
 		elseif isnothing(zero_sample) && k == "zero_sample"
 			zero_sample = parse(Int64, v) + 1
+		else
+			push!(meta, k => v)
 		end
 	end
 	if isnothing(sampling_rate)
@@ -82,43 +86,48 @@ function BeForData.BeForEpochs(arrow_table::Arrow.Table;
 	end
 	design = dat[:, n_epoch_samples+1:ncol(dat)]
 	mtx = Matrix{Float64}(dat[:, 1:n_epoch_samples])
-	BeForEpochs(mtx, sampling_rate, design, baseline, zero_sample)
+	if haskey(meta, "record meta")
+		recm = replace(meta["record meta"], "'" => '\"')
+		meta["record meta"] = JSON.parse(recm)
+	end
+	BeForEpochs(mtx, sampling_rate, design, baseline, zero_sample, meta)
 end
 
 """
 Arrow data format use 0-based index. The session information
 will be therefore converted.
 """
-function BeForData.write_feather(d::BeForRecord, filepath::AbstractString;
+function BeForData.write_feather(rec::BeForRecord, filepath::AbstractString;
 	compress::Any = :zstd)
 	schema = Dict([
-		"sampling_rate" => string(d.sampling_rate),
-		"time_column" => d.time_column,
-		"sessions" => join(string.(d.sessions .- 1), ",")
+		"sampling_rate" => string(rec.sampling_rate),
+		"time_column" => rec.time_column,
+		"sessions" => join(string.(rec.sessions .- 1), ",")
 	])
-	metadata = merge(schema, values_to_string(d.meta))
-	Arrow.write(filepath, d.dat; compress, metadata)
+	metadata = merge(schema, values_to_string(rec.meta))
+	Arrow.write(filepath, rec.dat; compress, metadata)
 end
 
 """
 Arrow data format use 0-based index. The zero_sample
 will be therefore converted.
 """
-function BeForData.write_feather(d::BeForEpochs, filepath::AbstractString;
+function BeForData.write_feather(ep::BeForEpochs, filepath::AbstractString;
 	compress::Any = :zstd)
 
 	schema = Dict([
-		"sampling_rate" => string(d.sampling_rate),
-		"zero_sample" => string(d.zero_sample - 1)])
+		"sampling_rate" => string(ep.sampling_rate),
+		"zero_sample" => string(ep.zero_sample - 1)])
+	metadata = merge(schema, values_to_string(ep.meta))
 
 	# build dataframe
-	cn = [string(x) for x in 1:d.dat.size[2]] # column names for data
-	df = hcat(DataFrame(d.dat, cn), d.design)
-	if d.is_baseline_adjusted
-		df[!, BSL_COL_NAME] = d.baseline
+	cn = [string(x) for x in 1:ep.dat.size[2]] # column names for data
+	df = hcat(DataFrame(ep.dat, cn), ep.design)
+	if ep.is_baseline_adjusted
+		df[!, BSL_COL_NAME] = ep.baseline
 	end
 
-	Arrow.write(filepath, df; compress, metadata = schema)
+	Arrow.write(filepath, df; compress, metadata)
 end
 
 function values_to_string(d::Dict)
