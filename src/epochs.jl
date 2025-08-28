@@ -10,13 +10,15 @@ struct BeForEpochs
 	design::DataFrame
 	baseline::Vector{Float64}
 	zero_sample::Int
+	meta::Dict{String, Any}
 
-	function BeForEpochs(force::Matrix{Float64},
+	function BeForEpochs(dat::Matrix{Float64},
 		sampling_rate::Real,
 		design::DataFrame,
 		baseline::Vector{Float64},
-		zero_sample::Int)
-		lf = size(force, 1)
+		zero_sample::Int,
+		meta::Dict{String, Any})
+		lf = size(dat, 1)
 		lb = length(baseline)
 		lb == 0 || lf == lb || throw(
 			ArgumentError(
@@ -29,7 +31,7 @@ struct BeForEpochs
 				"Number of rows of force ($(lf)) must match the number of rows ins the design ($(n)).",
 			),
 		)
-		return new(force, sampling_rate, design, baseline, zero_sample)
+		return new(dat, sampling_rate, design, baseline, zero_sample, meta)
 	end
 end;
 
@@ -37,21 +39,25 @@ function BeForEpochs(force::Matrix{Float64},
 	sampling_rate::Real;
 	design::Union{Nothing, DataFrame} = nothing,
 	baseline::Union{Nothing, Vector{Float64}} = nothing,
-	zero_sample::Int = 1)
+	zero_sample::Int = 1,
+	meta::Union{Nothing,Dict{String, Any}} = nothing)
 	if isnothing(baseline)
 		baseline = Float64[]
 	end
 	if isnothing(design)
 		design = DataFrame()
 	end
+	if isnothing(meta)
+		meta = Dict{String, Any}()
+	end
 	return BeForEpochs(force, sampling_rate, design,
-		baseline, zero_sample)
+		baseline, zero_sample, meta)
 
 end
 
 
 Base.propertynames(::BeForEpochs) = (:dat, :sampling_rate, :design, :baseline,
-	:zero_sample, :n_samples, :n_epochs, :is_baseline_adjusted)
+	:zero_sample, :n_samples, :meta, :n_epochs, :is_baseline_adjusted)
 function Base.getproperty(x::BeForEpochs, s::Symbol)
 	if s === :n_epochs
 		return size(x.dat, 1)
@@ -71,13 +77,21 @@ TODO
 """
 function Base.copy(fe::BeForEpochs)
 	return BeForEpochs(copy(fe.dat), fe.sampling_rate, copy(fe.design),
-		copy(fe.baseline), fe.zero_sample)
+		copy(fe.baseline), fe.zero_sample, copy(fe.meta))
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", x::BeForEpochs)
-	println(io, "BeForEpochs")
+	txt = "BeForEpochs"
+	if length(x.baseline) > 0
+		txt *= " (baseline adjusted)"
+	end
+	print(io, txt)
 	println(io, "  $(x.n_epochs) epochs")
 	println(io, "  $(x.n_samples) samples, sampling rate: $(x.sampling_rate), zero sample: $(x.zero_sample)")
+	println(io, "  metadata")
+	for (k, v) in x.meta
+		println(io, "  - $k: $v")
+	end
 	if nrow(x.design) > 0
 		print(io, "  Design: $(names(x.design))")
 	else
@@ -168,8 +182,10 @@ function extract_epochs(d::BeForRecord,
 	if isnothing(design)
 		design = DataFrame()
 	end
+	meta = Dict{String, Any}("record meta" => copy(d.meta))
+
 	return BeForEpochs(force_mtx, d.sampling_rate, copy(design),
-		Float64[], n_samples_before + 1)
+		Float64[], n_samples_before + 1, meta)
 end;
 
 """
@@ -193,7 +209,12 @@ function adjust_baseline!(d::BeForEpochs, baseline_window::UnitRange{<:Integer})
 	return d
 end
 
+"""
+    Meta data will not be copied and only the meta data of the first
+    BeForEpochs will be used in the resulting BeForEpochs.
+"""
 function Base.vcat(d::BeForEpochs, other::BeForEpochs)
+
 	if other.n_samples != d.n_samples
 		throw(ArgumentError("Number of samples per epoch must match (got $(d.n_samples) and $(other.n_samples))."))
 	end
@@ -211,8 +232,8 @@ function Base.vcat(d::BeForEpochs, other::BeForEpochs)
 	end
 	baseline = vcat(d.baseline, other.baseline)
 	design = vcat(d.design, other.design)
-	return BeForEpochs(vcat(d.dat, other.dat), d.sampling_rate, design,
-		baseline, d.zero_sample)
+	return BeForEpochs(vcat(d.dat, other.dat), d.sampling_rate; design,
+		baseline, zero_sample=d.zero_sample, meta=d.meta)
 end
 
 
@@ -230,7 +251,8 @@ function DataFrames.subset(fe::BeForEpochs, rows::Base.AbstractVecOrTuple{Intege
 		bsln = copy(fe.baseline)
 	end
 	subset_design = fe.design[rows, :]
-	return BeForEpochs(force, fe.sampling_rate, subset_design, bsln, fe.zero_sample)
+	return BeForEpochs(force, fe.sampling_rate; design=subset_design,
+		baseline=bsln, zero_sample=fe.zero_sample, meta=copy(fe.meta))
 end
 
 function DataFrames.subset(fe::BeForEpochs, args...)
