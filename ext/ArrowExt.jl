@@ -88,7 +88,7 @@ function BeForData.BeForEpochs(arrow_table::Arrow.Table;
 	mtx = Matrix{Float64}(dat[:, 1:n_epoch_samples])
 	if haskey(meta, "record meta")
 		recm = replace(meta["record meta"], "'" => '\"')
-		meta["record meta"] = JSON.parse(recm)
+		meta["record meta"] = Dict(JSON.parse(recm))
 	end
 	BeForEpochs(mtx, sampling_rate, design, baseline, zero_sample, meta)
 end
@@ -130,17 +130,20 @@ function BeForData.write_feather(ep::BeForEpochs, filepath::AbstractString;
 	Arrow.write(filepath, df; compress, metadata)
 end
 
-function values_to_string(d::Dict)
-    rtn = copy(d)
-    for (key, value) in rtn
+function values_to_string(d::AbstractDict)
+    rtn = Dict()
+    for (key, value) in d
         if value isa AbstractVector
             rtn[key] = join(string.(value), ",")
         else
-            rtn[key] = string(value)
+            if value isa AbstractDict
+                rtn[key] = JSON.json(value)
+            else
+                rtn[key] = string(value)
+            end
         end
     end
     return rtn
 end
-
 
 end
