@@ -1,7 +1,7 @@
 """
 	BeForEpochs
 
-Epoch-based force platform data, where each epoch is a fixed-length segment of force
+Epoch-based response force data, where each epoch is a fixed-length segment of force
 samples extracted from a continuous recording.
 
 The data are stored as a 2-D matrix with shape `(n_epochs, n_samples)`.  An optional

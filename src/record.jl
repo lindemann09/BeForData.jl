@@ -1,7 +1,7 @@
 """
 	BeForRecord
 
-Continuous force platform recording with optional multi-session support.
+Response force recording with optional multi-session support.
 
 Fields
 ------

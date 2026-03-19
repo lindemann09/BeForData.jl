@@ -1,9 +1,11 @@
 # BeForData.jl
 
-**BeForData** is a Julia package for working with behavioural force platform data.
+**BeForData** is a Julia package for working with behavioural response force data.
 It provides two core data structures — `BeForRecord` for continuous recordings and
 `BeForEpochs` for trial-based epoch data — together with tools for preprocessing,
 epoch extraction, baseline correction, and file I/O.
+
+**Author:** Oliver Lindemann, Erasmus University Rotterdam
 
 [![Build Status](https://github.com/lindemann09/BeForData.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/lindemann09/BeForData.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![GitHub license](https://img.shields.io/github/license/lindemann09/befordata.jl)](https://github.com/lindemann09/befordata.jl/blob/master/LICENSE)
@@ -165,6 +167,30 @@ rec = BeForRecord(streams, "ForcePlate", 1000.0)
 
 ---
 
+## Citation
+
+If you use BeForData.jl in your research, please cite it as:
+
+```
+Lindemann, O. (2025). BeForData.jl: A Julia package for behavioural response force data.
+Erasmus University Rotterdam. https://github.com/lindemann09/BeForData.jl
+```
+
+Or in BibTeX:
+
+```bibtex
+@software{lindemann2025beforedata,
+  author    = {Lindemann, Oliver},
+  title     = {{BeForData.jl}: A {Julia} package for behavioural response force data},
+  year      = {2025},
+  publisher = {GitHub},
+  institution = {Erasmus University Rotterdam},
+  url       = {https://github.com/lindemann09/BeForData.jl}
+}
+```
+
+---
+
 ## License
 
-© Oliver Lindemann — see [LICENSE](LICENSE) for details.
+(c) Oliver Lindemann — see [LICENSE](LICENSE) for details.
