@@ -1,7 +1,33 @@
 """
 	BeForEpochs
 
-TODO
+Epoch-based force platform data, where each epoch is a fixed-length segment of force
+samples extracted from a continuous recording.
+
+The data are stored as a 2-D matrix with shape `(n_epochs, n_samples)`.  An optional
+`baseline` vector (one value per epoch) records the per-epoch mean that was subtracted
+during baseline correction.
+
+Fields
+------
+- `dat`: `(n_epochs × n_samples)` matrix of force values in `Float64`.
+- `sampling_rate`: Sampling rate in Hz.
+- `design`: DataFrame with one row per epoch holding trial-level metadata
+  (condition labels, participant ID, etc.). May be empty.
+- `baseline`: Per-epoch baseline values subtracted during [`adjust_baseline!`](@ref).
+  Empty when no baseline correction has been applied.
+- `zero_sample`: 1-based column index in `dat` that corresponds to the epoch's time
+  zero (i.e. the triggering event).
+- `meta`: Arbitrary metadata stored as a string-keyed dictionary.
+
+Computed properties (read-only)
+--------------------------------
+- `n_epochs`: Number of epochs (rows of `dat`).
+- `n_samples`: Number of samples per epoch (columns of `dat`).
+- `is_baseline_adjusted`: `true` if a baseline correction has been applied.
+
+See also: [`BeForRecord`](@ref), [`extract_epochs`](@ref), [`adjust_baseline!`](@ref),
+[`subset`](@ref)
 """
 
 struct BeForEpochs
@@ -35,6 +61,27 @@ struct BeForEpochs
 	end
 end;
 
+"""
+	BeForEpochs(force::Matrix{Float64}, sampling_rate::Real;
+		design=nothing, baseline=nothing, zero_sample=1, meta=nothing)
+
+Construct a `BeForEpochs` from a force matrix.
+
+Arguments
+---------
+- `force`: `(n_epochs × n_samples)` matrix of force values.
+- `sampling_rate`: Sampling rate in Hz.
+
+Keyword Arguments
+-----------------
+- `design`: DataFrame with one row per epoch containing trial metadata. Defaults to
+  an empty DataFrame.
+- `baseline`: Per-epoch baseline values (length must equal `n_epochs`). Defaults to
+  an empty vector (no baseline correction applied).
+- `zero_sample`: 1-based column index in `force` corresponding to time zero.
+  Defaults to 1.
+- `meta`: Metadata dictionary. Defaults to an empty dictionary.
+"""
 function BeForEpochs(force::Matrix{Float64},
 	sampling_rate::Real;
 	design::Union{Nothing, DataFrame} = nothing,
@@ -71,9 +118,10 @@ function Base.getproperty(x::BeForEpochs, s::Symbol)
 end
 
 """
-	copy(fe::BeForEpochs)
+	copy(fe::BeForEpochs) -> BeForEpochs
 
-TODO
+Return a deep copy of `fe`, including copies of the force matrix, design DataFrame,
+baseline vector, and metadata dictionary.
 """
 function Base.copy(fe::BeForEpochs)
 	return BeForEpochs(copy(fe.dat), fe.sampling_rate, copy(fe.design),
@@ -99,41 +147,55 @@ function Base.show(io::IO, mime::MIME"text/plain", x::BeForEpochs)
 	end
 end
 
+"""
+	forces(d::BeForEpochs) -> Matrix{Float64}
+
+Return the raw force matrix of `d` with shape `(n_epochs, n_samples)`.
+
+See also: [`forces(::BeForRecord)`](@ref), [`adjust_baseline!`](@ref)
+"""
 forces(d::BeForEpochs) = d.dat
 
 ## processing
 """
-	extract_epochs(d::BeForRecord, column::Union{Symbol, String};
-		zero_samples::Union{Nothing, AbstractVector{<:Integer}} = nothing,
-		zero_times::Union{Nothing, AbstractVector{<:Real}} = nothing,
-		n_samples::Integer,
-		n_samples_before::Integer,
-		design::Union{Nothing, DataFrame}=nothing)
+	extract_epochs(d::BeForRecord, column;
+		zero_samples=nothing, zero_times=nothing,
+		n_samples, n_samples_before=0,
+		design=nothing, suppress_warnings=false) -> BeForEpochs
 
-		Parameter
-		---------
-		d: BeForRecord
-			the data
-		column: str
-			name of column containing the force data to be used
-		zero_samples: List[int], optional
-			zero sample that define the epochs
-		zero_times: List[int], optional
-			zero sample that define the epochs
-		n_samples: int
-			number of samples to be extract (from zero sample on)
-		n_samples_before: int, optional
-			number of samples to be extracted before the zero sample (default=0)
-		suppress_warnings : bool, optional (default: False)
-			If true, suppress incomplete epoch warnings during epoch extraction.
+Extract fixed-length epochs from a continuous `BeForRecord`.
 
-		design: pd.DataFrame, optional
-			design information
+Exactly one of `zero_samples` or `zero_times` must be provided to define the epoch
+onset positions.
 
-		Note
-		----
-		use `find_times` to detect zero samples with time-based
+Arguments
+---------
+- `d`: Source `BeForRecord`.
+- `column`: Column name (`Symbol`, `String`) or integer index of the force channel
+  to extract.
 
+Keyword Arguments
+-----------------
+- `zero_samples`: Integer sample indices (1-based) at which each epoch starts at
+  time zero.
+- `zero_times`: Time values (in ms) corresponding to the epoch time zero. These are
+  converted to sample indices via [`find_samples_by_time`](@ref).
+- `n_samples`: Number of samples to extract *after* (and including) the zero sample.
+- `n_samples_before`: Number of samples to extract *before* the zero sample.
+  Defaults to 0. The zero sample in the returned `BeForEpochs` is
+  `n_samples_before + 1`.
+- `design`: Optional DataFrame with one row per epoch containing trial metadata.
+- `suppress_warnings`: If `true`, suppress warnings about incomplete epochs that
+  extend beyond the end of the recording (missing samples are zero-padded).
+  Defaults to `false`.
+
+Returns
+-------
+A `BeForEpochs` with `length(zero_samples)` rows and
+`n_samples_before + n_samples` columns.
+
+See also: [`BeForEpochs`](@ref), [`adjust_baseline!`](@ref),
+[`find_samples_by_time`](@ref)
 """
 function extract_epochs(d::BeForRecord,
 	column::Union{Symbol, String, Int};
@@ -189,9 +251,21 @@ function extract_epochs(d::BeForRecord,
 end;
 
 """
-	adjust_baseline!(d::BeForEpochs, baseline_window::UnitRange{<:Integer})
+	adjust_baseline!(d::BeForEpochs, baseline_window::UnitRange{<:Integer}) -> BeForEpochs
 
-TODO
+Subtract a per-epoch baseline from the force data in-place.
+
+The baseline for each epoch is computed as the mean of the samples in
+`baseline_window` (column indices into `d.dat`). If a previous baseline correction
+has already been applied, the original (uncorrected) data are first restored before
+recomputing the new baseline.
+
+The per-epoch baseline values are stored in `d.baseline` so the correction can be
+undone or tracked.
+
+Returns `d` (mutated in place).
+
+See also: [`extract_epochs`](@ref), [`BeForEpochs`](@ref)
 """
 function adjust_baseline!(d::BeForEpochs, baseline_window::UnitRange{<:Integer})
 	if length(d.baseline) > 0
@@ -210,8 +284,15 @@ function adjust_baseline!(d::BeForEpochs, baseline_window::UnitRange{<:Integer})
 end
 
 """
-    Meta data will not be copied and only the meta data of the first
-    BeForEpochs will be used in the resulting BeForEpochs.
+	vcat(d::BeForEpochs, other::BeForEpochs) -> BeForEpochs
+
+Concatenate two `BeForEpochs` objects along the epoch dimension.
+
+Both objects must have matching `n_samples`, `sampling_rate`, `zero_sample`, baseline
+adjustment state, and design column names. The metadata of `d` (the first argument)
+is used for the result; the metadata of `other` is discarded.
+
+See also: [`subset`](@ref)
 """
 function Base.vcat(d::BeForEpochs, other::BeForEpochs)
 
@@ -238,10 +319,22 @@ end
 
 
 """
-	subset(fe::BeForEpochs, rows::Base.AbstractVecOrTuple{Integer})
-	subset(fe::BeForEpochs, args...)
+	subset(fe::BeForEpochs, rows) -> BeForEpochs
+	subset(fe::BeForEpochs, args...) -> BeForEpochs
 
-TODO
+Return a subset of `fe` containing only the selected epochs.
+
+**Row-index form** – `rows` is a vector or tuple of integer indices (1-based) specifying
+which epochs to keep.
+
+**DataFrames form** – `args...` are passed directly to `DataFrames.subset` applied to
+`fe.design`. Epochs whose design rows satisfy the condition are retained. Requires
+`fe.design` to be non-empty.
+
+Both forms copy the relevant slice of `fe.dat`, the `baseline` vector, and the design
+DataFrame.
+
+See also: [`vcat`](@ref), [`extract_epochs`](@ref)
 """
 function DataFrames.subset(fe::BeForEpochs, rows::Base.AbstractVecOrTuple{Integer})
 	force = fe.dat[rows, :]
@@ -263,11 +356,18 @@ function DataFrames.subset(fe::BeForEpochs, args...)
 end
 
 ### helper functions
-"""This method searches for the indices in the sorted_array that are equal to or
-the next larger value. If an exact match is not found, the index of the next
-larger time stamp is returned.
+"""
+	_find_larger_or_equal(needle::Real, sorted_array::AbstractVector{<:Real}) -> Union{Int, Nothing}
 
-.. math:: \\text{time_stamps}[i-1] <= t < \\text{time_stamps}[i]
+Return the index of the first element in `sorted_array` that is greater than or equal
+to `needle`. If no such element exists, return `nothing`.
+
+```math
+\\text{sorted\\_array}[i-1] < \\text{needle} \\leq \\text{sorted\\_array}[i]
+```
+
+This is a linear-scan fallback for non-standard array types; use
+`searchsortedfirst` for plain vectors.
 """
 function _find_larger_or_equal(needle::Real, sorted_array::AbstractVector{<:Real})
 	cnt::Int = 0

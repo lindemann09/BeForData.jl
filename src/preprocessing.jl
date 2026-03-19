@@ -1,8 +1,16 @@
 """
-	scale_force!(fd::BeForRecord, factor::Real)
-	scale_force!(fd::BeForEpochs, factor::Real)
+	scale_force!(fd::BeForRecord, factor::Real) -> BeForRecord
+	scale_force!(fd::BeForEpochs, factor::Real) -> BeForEpochs
 
-	TODO
+Multiply all force channel values by `factor` in place.
+
+For `BeForRecord`, every column listed in `fd.force_cols` is scaled.
+For `BeForEpochs`, the entire force matrix and the baseline vector (if present) are
+scaled so that the baseline-corrected representation remains consistent.
+
+Returns `fd` (mutated in place).
+
+See also: [`detrend`](@ref), [`moving_average`](@ref)
 """
 function scale_force!(fd::BeForRecord, factor::Real)
 	idx = fd.force_cols
@@ -17,6 +25,16 @@ function scale_force!(fd::BeForEpochs, factor::Real)
 end
 
 
+"""
+	moving_average(dat::AbstractVector{<:AbstractFloat}, window_size::Int) -> Vector
+
+Compute a centred moving average of `dat` using a window of `window_size` samples.
+
+Near the boundaries the window is clamped to the available data (no padding), so the
+output has the same length as the input.
+
+See also: [`moving_average(::BeForRecord, ::Int)`](@ref), [`detrend`](@ref)
+"""
 function moving_average(dat::AbstractVector{<:AbstractFloat},
 	window_size::Int64)
 	rtn = similar(dat)
@@ -38,9 +56,15 @@ function moving_average(dat::AbstractVector{<:AbstractFloat},
 end
 
 """
-	moving_average!(fd::BeForRecord; window_size::Int)
+	moving_average(d::BeForRecord, window_size::Int) -> BeForRecord
 
-TODO
+Apply a centred moving average with `window_size` samples to every force channel in
+`d`, processing each session independently.
+
+Returns a new `BeForRecord`; the original is not modified. The window size is recorded
+in the metadata of the returned record.
+
+See also: [`moving_average(::AbstractVector, ::Int)`](@ref), [`detrend`](@ref)
 """
 function moving_average(d::BeForRecord, window_size::Int)
 
@@ -57,9 +81,15 @@ end;
 
 
 """
-	detrend(d::BeForRecord; window_size::Int)
+	detrend(d::BeForRecord, window_size::Int) -> BeForRecord
 
-TODO
+Remove a slow trend from every force channel in `d` by subtracting a centred moving
+average with `window_size` samples from the raw signal.
+
+Each session is processed independently. Returns a new `BeForRecord`; the original is
+not modified. The window size is recorded in the metadata of the returned record.
+
+See also: [`moving_average`](@ref), [`scale_force!`](@ref)
 """
 function detrend(d::BeForRecord, window_size::Int)
 
@@ -74,6 +104,14 @@ function detrend(d::BeForRecord, window_size::Int)
 		merge(d.meta, meta))
 end;
 
+"""
+	detect_sessions() -> nothing
+
+Automatically detect session boundaries in a recording.
+
+!!! note
+    Not yet implemented.
+"""
 function detect_sessions()
 	# TODO
 end

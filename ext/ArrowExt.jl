@@ -10,8 +10,17 @@ export write_feather
 const BSL_COL_NAME = "__befor_baseline__"
 
 """
-Arrow data format use 0-based index. The session information
-will be therefor converted to 1-based indexing as used in Julia.
+	BeForRecord(arrow_table::Arrow.Table;
+		sampling_rate=nothing, time_column=nothing, sessions=nothing) -> BeForRecord
+
+Construct a `BeForRecord` from an `Arrow.Table`, typically loaded from a Feather file
+written by [`write_feather`](@ref).
+
+Sampling rate, session start indices, and time column name are read from the table's
+Arrow metadata when not provided explicitly. Session indices are stored 0-based in the
+Arrow format and are converted to 1-based Julia indices automatically.
+
+See also: [`write_feather(::BeForRecord, ...)`](@ref)
 """
 function BeForData.BeForRecord(arrow_table::Arrow.Table;
 			sampling_rate::Union{Nothing, Real} = nothing,
@@ -39,8 +48,18 @@ function BeForData.BeForRecord(arrow_table::Arrow.Table;
 end
 
 """
-Arrow data format use 0-based index. The zero_sample
-will be therefore converted to 1-based indexing as used in Julia.
+	BeForEpochs(arrow_table::Arrow.Table;
+		sampling_rate=nothing, zero_sample=nothing) -> BeForEpochs
+
+Construct a `BeForEpochs` from an `Arrow.Table`, typically loaded from a Feather file
+written by [`write_feather`](@ref).
+
+Sampling rate and zero sample index are read from the table's Arrow metadata when not
+provided explicitly. The zero sample is stored 0-based in the Arrow format and is
+converted to 1-based Julia indexing automatically. The baseline column (if present) and
+design columns are separated from the force data automatically.
+
+See also: [`write_feather(::BeForEpochs, ...)`](@ref)
 """
 function BeForData.BeForEpochs(arrow_table::Arrow.Table;
 			sampling_rate::Union{Nothing, Real}=nothing,
@@ -94,8 +113,15 @@ function BeForData.BeForEpochs(arrow_table::Arrow.Table;
 end
 
 """
-Arrow data format use 0-based index. The session information
-will be therefore converted.
+	write_feather(rec::BeForRecord, filepath::AbstractString; compress=:zstd)
+
+Save `rec` to an Arrow/Feather file at `filepath`.
+
+Sampling rate, time column name, and session start indices are stored as Arrow
+metadata. Session indices are converted from 1-based Julia indexing to 0-based Arrow
+indexing. The default compression is `:zstd`; pass `compress=nothing` to disable.
+
+See also: [`BeForRecord(::Arrow.Table, ...)`](@ref)
 """
 function BeForData.write_feather(rec::BeForRecord, filepath::AbstractString;
 	compress::Any = :zstd)
@@ -109,8 +135,16 @@ function BeForData.write_feather(rec::BeForRecord, filepath::AbstractString;
 end
 
 """
-Arrow data format use 0-based index. The zero_sample
-will be therefore converted.
+	write_feather(ep::BeForEpochs, filepath::AbstractString; compress=:zstd)
+
+Save `ep` to an Arrow/Feather file at `filepath`.
+
+The force matrix columns are named with 1-based integer strings. Design columns are
+appended after the force columns. If `ep` is baseline-adjusted, the baseline vector is
+stored in a special column `"__befor_baseline__"`. The zero sample index is converted
+from 1-based Julia indexing to 0-based Arrow indexing and stored as Arrow metadata.
+
+See also: [`BeForEpochs(::Arrow.Table, ...)`](@ref)
 """
 function BeForData.write_feather(ep::BeForEpochs, filepath::AbstractString;
 	compress::Any = :zstd)
