@@ -1,7 +1,8 @@
 # BeForData.jl
 
-[![Build Status](https://github.com/lindemann09/BeForData.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/lindemann09/BeForData.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Julia](https://img.shields.io/badge/Julia-1.10%2B-blue)](https://julialang.org)
 [![GitHub license](https://img.shields.io/github/license/lindemann09/befordata.jl)](https://github.com/lindemann09/befordata.jl/blob/master/LICENSE)
+[![Build Status](https://github.com/lindemann09/BeForData.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/lindemann09/BeForData.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
 **BeForData** is a Julia package for working with behavioural response force data.
 It provides two core data structures — `BeForRecord` for continuous recordings and
