@@ -49,6 +49,6 @@ Pkg.add("XDF")     # XDF stream loading
 
 MIT License. See [LICENSE](LICENSE) for details.
 
-## Related Software
+## Python
 
 A [Python implementation](https://github.com/lindemann09/befordata) of **BeForData** is also available.
