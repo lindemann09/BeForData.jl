@@ -1,18 +1,11 @@
-# BeForData.jl
-
-[![Julia](https://img.shields.io/badge/Julia-1.10%2B-blue)](https://julialang.org)
-[![GitHub license](https://img.shields.io/github/license/lindemann09/befordata.jl)](https://github.com/lindemann09/befordata.jl/blob/master/LICENSE)
-[![Build Status](https://github.com/lindemann09/BeForData.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/lindemann09/BeForData.jl/actions/workflows/CI.yml?query=branch%3Amain)
+# BeForData.jl Documentation
 
 **BeForData** is a Julia package for working with behavioural response force data.
 It provides two core data structures — `BeForRecord` for continuous recordings and
 `BeForEpochs` for trial-based epoch data — together with tools for preprocessing,
 epoch extraction, baseline correction, and file I/O.
 
-**Documentation**: [https://lindemann09.github.io/BeForData.jl](https://lindemann09.github.io/BeForData.jl)
-
 (c) 2024 Oliver Lindemann, Erasmus University Rotterdam
-
 
 ## Overview
 
@@ -29,7 +22,6 @@ Optional extensions add support for reading/writing [Apache Arrow](https://arrow
 (Feather) files, applying [DSP](https://github.com/JuliaDSP/DSP.jl) filters, and
 loading [XDF](https://github.com/xdf-modules/xdf-Julia) streams.
 
-
 ## Installation
 
 ```julia
@@ -45,10 +37,25 @@ Pkg.add("DSP")     # filtering
 Pkg.add("XDF")     # XDF stream loading
 ```
 
-## License
+## Citation
 
-MIT License. See [LICENSE](LICENSE) for details.
+If you use BeForData.jl in your research, please cite it as:
 
-## Related Software
+> Lindemann, O. (2024). BeForData.jl: A Julia package for behavioural response force
+> data. [Computer software]. JuliaHub. https://github.com/lindemann09/BeForData.jl
 
-A [Python implementation](https://github.com/lindemann09/befordata) of **BeForData** is also available.
+Or in BibTeX:
+
+```bibtex
+@software{lindemann2024beforedata,
+  author    = {Lindemann, Oliver},
+  title     = {{BeForData.jl}: A {Julia} package for behavioural response force data},
+  year      = {2024},
+  publisher = {JuliaHub},
+  url       = {https://github.com/lindemann09/BeForData.jl}
+}
+```
+
+## Python Version
+
+A [Python implementation](https://github.com/lindemann09/befordata) of BeForData is also available.
