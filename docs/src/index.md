@@ -56,6 +56,6 @@ Or in BibTeX:
 }
 ```
 
-## Python Version
+## Related Software
 
-A [Python implementation](https://github.com/lindemann09/befordata) of BeForData is also available.
+A [Python implementation](https://github.com/lindemann09/befordata) of **BeForData** is also available.
