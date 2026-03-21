@@ -15,4 +15,4 @@ makedocs(
     ],
 )
 
-deploydocs(; repo = "github.com/lindemann09/ClusterPermutationTests.jl", push_preview = true)
+deploydocs(; repo = "github.com/lindemann09/BeForData.jl", push_preview = true)
