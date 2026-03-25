@@ -10,7 +10,7 @@ A continuous force recording with one or more sessions.
 using DataFrames, BeForData
 
 # Create from a DataFrame
-df = DataFrame(time = 0:0.5:999.5, Fz = randn(2000))
+df = DataFrame(time = 0:0.5:999.5, Fz = randn(2000), trigger = Int.(rand(2000).>0.9))
 rec = BeForRecord(df, 2000.0; time_column = "time")
 
 # Access data

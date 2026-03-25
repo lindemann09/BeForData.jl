@@ -78,7 +78,7 @@ end
 ### DEPRECATED METHODS
 
 """
-	lowpass_filter(fe::BeForEpochs; cutoff::Real, order::Integer=4,
+	lowpass_filter(fe::BeForEpochs; cutoff::Real, order::Integer,
 		suppress_warning::Bool=false) -> BeForEpochs
 
 !!! warning "Deprecated"
@@ -92,7 +92,7 @@ Returns a new `BeForEpochs`; the original is not modified.
 """
 function BeForData.lowpass_filter(fe::BeForEpochs;
 	cutoff::Real,
-	order::Integer = 4,
+	order::Integer,
 	suppress_warning::Bool = false,
 )
 	suppress_warning || @warn "It's suggested to filter the data (i.e. BeForRecord) " *

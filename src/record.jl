@@ -14,8 +14,7 @@ Fields
 - `sessions`: 1-based sample indices that mark the start of each session. The first
   entry is always 1.
 - `meta`: Arbitrary metadata stored as a string-keyed dictionary.
-- `force_cols`: Column indices (into `dat`) of the force channels. Set automatically
-  by the constructor.
+- `force_cols`: Names of the force columns
 
 Computed properties (read-only)
 --------------------------------
@@ -31,23 +30,25 @@ struct BeForRecord
 	time_column::String
 	sessions::Vector{Int}
 	meta::Dict{String, Any}
-	force_cols::AbstractVector{Int} # set by constructor
+	force_cols::Vector{String} # set by constructor
 
 	function BeForRecord(dat::DataFrame,
 				sampling_rate::Real,
 				time_column::String,
-				sessions::AbstractVector{Int},
-				meta::Dict{String, Any})
+				sessions::Vector{Int},
+				meta::Dict{String, Any},
+			    force_cols::Vector{String})
 
-		force_cols = findall(names(dat) .!= time_column)
+		if time_column in force_cols
+			throw(ArgumentError("time_column '$time_column' cannot be a force column"))
+		end
 
 		for c in force_cols # convert to Data to Float64
 			dat[!, c] = convert.(Float64, dat[!, c])
 		end
 
-		sessions = collect(sessions)
 		if sessions[1] > 1
-			pushfirst!(sessions, 1)
+			pushfirst!(sessions, 1) # first session must be 1
 		elseif sessions[1] < 1
 			sessions[1] = 1
 		end
@@ -80,7 +81,9 @@ function BeForRecord(dat::DataFrame,
 			sampling_rate::Real;
 			time_column::Union{Nothing, String} = nothing,
 			sessions::Union{Nothing, AbstractVector{Int}} = nothing,
-			meta::Dict = Dict{String, Any}())
+			meta::Dict = Dict{String, Any}(),
+			force_cols::Union{Nothing, String, AbstractVector{String}} = nothing
+			)
 	if isnothing(time_column)
 		time_column = ""
 	else
@@ -90,8 +93,18 @@ function BeForRecord(dat::DataFrame,
 	end
 	if isnothing(sessions)
 		sessions = nrow(dat) > 0 ? [1] : Int[]
+	else
+		sessions = collect(sessions)
 	end
-	return BeForRecord(dat, Float64(sampling_rate), time_column, sessions, meta)
+
+	if force_cols isa String
+		force_cols = [force_cols]
+	elseif isnothing(force_cols)
+		force_cols = filter!(x -> x != "time", names(dat))
+	else
+		sessions = collect(sessions)
+	end
+	return BeForRecord(dat, Float64(sampling_rate), time_column, sessions, meta, force_cols)
 end
 
 """
@@ -102,7 +115,7 @@ indices, and metadata dictionary.
 """
 function Base.copy(d::BeForRecord)
 	return BeForRecord(copy(d.dat), d.sampling_rate, d.time_column,
-		copy(d.sessions), copy(d.meta))
+		copy(d.sessions), copy(d.meta), copy(d.force_cols))
 end
 
 Base.propertynames(::BeForRecord) = (:dat, :sampling_rate, :time_column, :sessions,
@@ -131,7 +144,7 @@ function split_sessions(d::BeForRecord)
 	rtn = BeForRecord[]
 	for idx in session_range(d)
 		dat = BeForRecord(d.dat[idx, :], d.sampling_rate;
-			time_column = d.time_column, meta = d.meta)
+			time_column = d.time_column, meta = d.meta, force_cols = d.force_cols)
 		push!(rtn, dat)
 	end
 	return rtn
@@ -198,7 +211,7 @@ See also: [`split_sessions`](@ref), [`session_range`](@ref)
 function add_session(d::BeForRecord, session_data::DataFrame)
 	dat = vcat(copy(d.dat), session_data)
 	sessions = vcat(d.sessions, nrow(d.dat))
-	return BeForRecord(dat, d.sampling_rate, d.time_column, sessions, d.meta)
+	return BeForRecord(dat, d.sampling_rate, d.time_column, sessions, d.meta, d.force_cols)
 end
 
 
