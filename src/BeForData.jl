@@ -2,7 +2,7 @@ module BeForData
 
 using Statistics: mean
 using DataFrames
-#using DimensionalData ## TODO: use DimensionalData instead Matrix
+using DimensionalData ## TODO: use DimensionalData instead Matrix
 
 export BeForRecord,
 	forces,
