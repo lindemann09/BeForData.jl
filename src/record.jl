@@ -5,8 +5,8 @@ Response force recording with optional multi-session support.
 
 Fields
 ------
-- `forces`: `DimArray` with dimensions `(time, forces)` containing force data as
-  `Float64`. The `time` dimension holds time stamps in ms; the `forces` dimension
+- `dat`: `DimArray` with dimensions `(time, name)` containing force data as
+  `Float64`. The `time` dimension holds time stamps in ms; the `name` dimension
   holds channel names.
 - `additional_dat`: `DataFrame` with any columns from the source data that are
   neither the time column nor force channels, or `nothing` if no such columns exist.
@@ -26,20 +26,20 @@ See also: [`BeForEpochs`](@ref), [`forces`](@ref), [`time_stamps`](@ref),
 [`split_sessions`](@ref), [`extract_epochs`](@ref)
 """
 struct BeForRecord
-	forces::DimArray{Float64}
+	dat::DimArray{Float64}
 	additional_dat::Union{Nothing, DataFrame}
 	sampling_rate::Float64
 	sessions::Vector{Int}
 	meta::Dict{String, Any}
 
-	function BeForRecord(forces::DimArray,
+	function BeForRecord(dat::DimArray,
 		additional_dat::Union{Nothing, DataFrame},
 		sampling_rate::Real,
 		sessions::Union{Nothing, AbstractVector{Int}},
 		meta::Dict{String, Any})
 
 		if isnothing(sessions)
-			sessions = size(forces, 1) > 0 ? [1] : Int[]
+			sessions = size(dat, 1) > 0 ? [1] : Int[]
 		else
 		end
 		if sessions[1] > 1
@@ -47,12 +47,36 @@ struct BeForRecord
 		elseif sessions[1] < 1
 			sessions[1] = 1
 		end
-		new(forces, additional_dat, sampling_rate, sessions, meta)
+		new(dat, additional_dat, sampling_rate, sessions, meta)
 	end
 end;
 
-BeForRecord(forces::DimArray, additional_dat::Union{Nothing, DataFrame},
-	sampling_rate::Real, meta::Dict{String, Any}) = BeForRecord(forces, additional_dat, sampling_rate, nothing, meta)
+"""
+	BeForRecord(dat::DimArray, [additional_dat::DataFrame,] sampling_rate::Real;
+		sessions=nothing, meta=Dict{String, Any}())
+
+Construct a `BeForRecord` from pre-built components.
+
+Arguments
+---------
+- `dat`: `DimArray` with dimensions `(time, name)` containing force data.
+- `additional_dat`: `DataFrame` with non-force columns (Optional)
+- `sampling_rate`: Sampling rate in Hz.
+
+Keyword Arguments
+-----------------
+- `sessions`: 1-based sample indices marking the start of each session.
+  If `nothing` (default), a single session is inferred (`[1]` for non-empty data).
+- `meta`: Metadata dictionary. Defaults to an empty dictionary.
+
+See also: [`BeForRecord(::DataFrame, ...)`](@ref)
+"""
+BeForRecord(dat::DimArray, additional_dat::DataFrame, sampling_rate::Real;
+	sessions::Union{Nothing, AbstractVector{Int}} = nothing, meta::Dict = Dict{String, Any}()) =
+	BeForRecord(dat, additional_dat, sampling_rate, sessions, meta)
+BeForRecord(dat::DimArray, sampling_rate::Real;
+	sessions::Union{Nothing, AbstractVector{Int}} = nothing, meta::Dict = Dict{String, Any}()) =
+	BeForRecord(dat, nothing, sampling_rate, sessions, meta)
 
 """
 	BeForRecord(dat::DataFrame, sampling_rate::Real;
@@ -76,6 +100,11 @@ Keyword Arguments
 - `sessions`: 1-based sample indices marking the start of each session. Defaults to
   `[1]` (single session covering all samples).
 - `meta`: Optional metadata dictionary.
+
+Returns
+-------
+A `BeForRecord` where `forces` contains only the selected force columns and
+`additional_dat` contains any remaining, non-time/non-force columns.
 """
 function BeForRecord(dat::DataFrame,
 	sampling_rate::Real;
@@ -108,7 +137,7 @@ function BeForRecord(dat::DataFrame,
 		throw(ArgumentError("time_column '$time_column' cannot be a force column"))
 	end
 	x = disallowmissing(dat[:, force_cols], error = false)
-	forces = DimArray(Matrix(x), (time = time_stamps, forces = names(x)))
+	forces = DimArray(Matrix(x), (time = time_stamps, name = names(x)))
 	append!(used_columns, force_cols)
 
 	additional_vars_names = setdiff(names(dat), used_columns)
@@ -128,7 +157,7 @@ Return a deep copy of `d`, including copies of the underlying DataFrame, session
 indices, and metadata dictionary.
 """
 function Base.copy(d::BeForRecord)
-	return BeForRecord(copy(d.forces), copy(d.additional_dat), d.sampling_rate,
+	return BeForRecord(copy(d.dat), copy(d.additional_dat), d.sampling_rate,
 		copy(d.sessions), copy(d.meta))
 end
 
@@ -136,13 +165,13 @@ Base.propertynames(::BeForRecord) = (:forces, :additional_dat, :sampling_rate, :
 	:time_column, :n_samples, :n_forces, :force_cols)
 function Base.getproperty(d::BeForRecord, s::Symbol)
 	if s === :n_samples
-		return size(d.forces)[1]
+		return size(d.dat)[1]
 	elseif s === :n_forces
-		return size(d.forces)[2]
+		return size(d.dat)[2]
 	elseif s === :time_column
-		return name(dims(d.forces, 1))
+		return name(dims(d.dat, 1))
 	elseif s === :force_cols
-		return collect(dims(d.forces, 2).val)
+		return collect(dims(d.dat, 2).val)
 	else
 		return getfield(d, s)
 	end
@@ -161,7 +190,7 @@ See also: [`session_range`](@ref), [`add_session`](@ref)
 function split_sessions(d::BeForRecord)
 	rtn = BeForRecord[]
 	for idx in session_range(d)
-		dat = BeForRecord(d.forces[idx, :], d.additional_dat[idx, :], d.sampling_rate, d.meta)
+		dat = BeForRecord(d.dat[idx, :], d.additional_dat[idx, :], d.sampling_rate; meta= d.meta)
 		push!(rtn, dat)
 	end
 	return rtn
@@ -180,12 +209,11 @@ Arguments
 - `session`: If an integer, return time stamps only for that session (1-based index).
   If `nothing` (default), return time stamps for all samples.
 
-See also: [`forces`](@ref), [`find_samples_by_time`](@ref)
+See also: [`session_range`](@ref), [`forces`](@ref)
 """
-function time_stamps(d::BeForRecord;
-	session::Union{Nothing, Int} = nothing)
+function time_stamps(d::BeForRecord; session::Union{Nothing, Int} = nothing)
 
-	t = dims(d.forces, 1)
+	t = dims(d.dat, 1)
 	if isnothing(session)
 		return t
 	else
@@ -195,26 +223,30 @@ function time_stamps(d::BeForRecord;
 end
 
 """
-	forces(d::BeForRecord; session=nothing) -> DataFrame
+	forces(d::BeForRecord, [name::Union{Symbol, String}]; session=nothing) -> DimArray
 
-Return the force data from `d` as a DataFrame.
+Return the force data from `d` as a `DimArray`.
 
-Arguments
----------
-- `session`: If an integer, return data only for that session (1-based index).
-  If `nothing` (default), return data for all samples.
+Keyword Arguments
+-----------------
+- `name`: Force channel name (`Symbol` or `String`) to select a single channel.
+  If `nothing` (default), all channels are returned.
+- `session`: 1-based session index. If `nothing` (default), data for all sessions
+  is returned.
 
-See also: [`time_stamps`](@ref), [`session_range`](@ref)
+See also: [`time_stamps`](@ref), [`session_range`](@ref), [`BeForRecord`](@ref)
 """
-function forces(d::BeForRecord;
-	session::Union{Nothing, Int} = nothing)
-
-	f = d.forces
+forces(d::BeForRecord, name::Symbol; session::Union{Nothing, Int} = nothing) =
+	forces(d, string(name); session)
+forces(d::BeForRecord, name::String; session::Union{Nothing, Int} = nothing) =
+	forces(d; session)[:, At(name)]
+forces(d::BeForRecord, idx::Int; session::Union{Nothing, Int} = nothing) =
+	forces(d; session)[:, idx]
+function forces(d::BeForRecord;	session::Union{Nothing, Int} = nothing)
 	if isnothing(session)
-		return f
+		return d.dat
 	else
-		idx = session_range(d, session)
-		return f[idx, :]
+		return d.dat[session_range(d, session), :]
 	end
 end
 
@@ -227,20 +259,27 @@ Return a new `BeForRecord` with `session_data` appended as an additional session
 The new session begins at the sample immediately following the last sample of `d`.
 `session_data` must have the same force channels as `d`.
 
+Keyword Arguments
+-----------------
+- `reset_timestamps`: If `false` (default), absolute time stamps are preserved and
+	concatenation requires that appended time stamps remain ordered. If `true`, the
+	appended session keeps its own local time axis and is concatenated along the
+	`time` dimension.
+
 See also: [`split_sessions`](@ref), [`session_range`](@ref)
 """
 function add_session(d::BeForRecord, session_data::DataFrame; reset_timestamps::Bool = false)
 	bfr = BeForRecord(session_data, d.sampling_rate;
 		force_cols = d.force_cols, time_column = d.time_column, meta = d.meta)
-	return add_session(d, bfr;reset_timestamps)
+	return add_session(d, bfr; reset_timestamps)
 end
 
 function add_session(d::BeForRecord, session_data::BeForRecord; reset_timestamps::Bool = false)
 
 	if reset_timestamps
-		forces = cat(d.forces, session_data.forces; dims=Dim{:time}())
+		forces = cat(d.dat, session_data.dat; dims = Dim{:time}())
 	else
-		forces = vcat(d.forces, session_data.forces)
+		forces = vcat(d.dat, session_data.dat)
 	end
 	if forces isa Matrix
 		throw(ArgumentError("Incompatible times stamps, time stamps must be ordered"))
@@ -283,6 +322,9 @@ is used:
 \\text{time\\_stamps}[i-1] \\leq t < \\text{time\\_stamps}[i]
 ```
 
+If a value is larger than the final time stamp, the returned index is
+`d.n_samples + 1`.
+
 See also: [`time_stamps`](@ref), [`extract_epochs`](@ref)
 """
 function find_samples_by_time(times::AbstractVector, d::BeForRecord)
@@ -298,7 +340,7 @@ function Base.show(io::IO, mime::MIME"text/plain", x::BeForRecord)
 	for (k, v) in x.meta
 		println(io, "  - $k: $v")
 	end
-	show(io, mime, x.forces)
+	show(io, mime, x.dat)
 end
 
 

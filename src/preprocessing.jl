@@ -13,9 +13,7 @@ Returns `fd` (mutated in place).
 See also: [`detrend`](@ref), [`moving_average`](@ref)
 """
 function scale_force!(fd::BeForRecord, factor::Real)
-	idx = fd.force_cols
-	fd.dat[:, idx] = fd.dat[:, idx] .* factor
-	return fd
+	return fd.dat[:, fd.force_cols] = fd.dat[:, fd.force_cols] .* factor
 end
 
 function scale_force!(fd::BeForEpochs, factor::Real)

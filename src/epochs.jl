@@ -198,7 +198,7 @@ See also: [`BeForEpochs`](@ref), [`adjust_baseline!`](@ref),
 [`find_samples_by_time`](@ref)
 """
 function extract_epochs(d::BeForRecord,
-	column::Union{Symbol, String, Int};
+	column::Union{Symbol, String, Integer};
 	zero_samples::Union{Nothing, AbstractVector{<:Integer}} = nothing,
 	zero_times::Union{Nothing, AbstractVector{<:Real}} = nothing,
 	n_samples::Integer,
@@ -215,13 +215,13 @@ function extract_epochs(d::BeForRecord,
 					  "not both."))
 
 	if !isnothing(zero_times)
-		ts = time_stamps(d)
+		ts = time_stamps(d).val
 		zero_samples = [_find_larger_or_equal(zt, ts) for zt in zero_times]
 		return extract_epochs(d, column; zero_samples, n_samples,
 			n_samples_before, design, suppress_warnings)
 	end
 
-	dat = d.dat[:, column]
+	dat = forces(d, column)
 	samples_fd = d.n_samples # samples for data
 	n_epochs = length(zero_samples)
 	ncol = n_samples_before + n_samples
