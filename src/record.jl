@@ -115,9 +115,7 @@ function BeForRecord(dat::DataFrame,
 )
 
 	if isnothing(time_column)
-		step = 1000.0 / sampling_rate # in ms
-		final_time = (nrow(dat) - 1) * step
-		time_stamps = 0:step:final_time
+		time_stamps = make_time_stamps(nrow(dat), sampling_rate)
 		used_columns = String[]
 	else
 		time_column = String(time_column)
@@ -151,10 +149,14 @@ function BeForRecord(dat::DataFrame,
 end
 
 """
-	copy(d::BeForRecord) -> BeForRecord
+	copy(d::BeForRecord)
 
-Return a deep copy of `d`, including copies of the underlying DataFrame, session
+Return a deep copy of `d`, including copies of the underlying data, session
 indices, and metadata dictionary.
+
+Returns
+-------
+A new `BeForRecord`.
 """
 function Base.copy(d::BeForRecord)
 	return BeForRecord(copy(d.dat), copy(d.additional_dat), d.sampling_rate,
@@ -178,41 +180,48 @@ function Base.getproperty(d::BeForRecord, s::Symbol)
 end
 
 """
-	split_sessions(d::BeForRecord) -> Vector{BeForRecord}
+	split_sessions(d::BeForRecord)
 
 Split a multi-session `BeForRecord` into a vector of single-session records.
 
 Each returned record contains only the samples belonging to one session. Metadata
 is shared (not deep-copied) across the resulting records.
 
+Returns
+-------
+A vector of single-session `BeForRecord` objects.
+
 See also: [`session_range`](@ref), [`add_session`](@ref)
 """
 function split_sessions(d::BeForRecord)
 	rtn = BeForRecord[]
 	for idx in session_range(d)
-		dat = BeForRecord(d.dat[idx, :], d.additional_dat[idx, :], d.sampling_rate; meta= d.meta)
+		dat = BeForRecord(d.dat[idx, :], d.additional_dat[idx, :], d.sampling_rate; meta = d.meta)
 		push!(rtn, dat)
 	end
 	return rtn
 end
 
 """
-	time_stamps(d::BeForRecord; session=nothing) -> AbstractVector
+	time_stamps(d::BeForRecord; session=nothing)
 
 Return the time stamps for `d` in milliseconds.
 
 If `d` has a `time_column`, the values from that column are returned directly.
 Otherwise, an evenly-spaced range starting at 0 ms is generated from `sampling_rate`.
 
-Arguments
----------
+Keyword Arguments
+-----------------
 - `session`: If an integer, return time stamps only for that session (1-based index).
   If `nothing` (default), return time stamps for all samples.
+
+Returns
+-------
+The time axis as an abstract vector-like object (in ms).
 
 See also: [`session_range`](@ref), [`forces`](@ref)
 """
 function time_stamps(d::BeForRecord; session::Union{Nothing, Int} = nothing)
-
 	t = dims(d.dat, 1)
 	if isnothing(session)
 		return t
@@ -223,7 +232,7 @@ function time_stamps(d::BeForRecord; session::Union{Nothing, Int} = nothing)
 end
 
 """
-	forces(d::BeForRecord, [name::Union{Symbol, String}]; session=nothing) -> DimArray
+	forces(d::BeForRecord, [name::Union{Symbol, String}]; session=nothing)
 
 Return the force data from `d` as a `DimArray`.
 
@@ -234,6 +243,11 @@ Keyword Arguments
 - `session`: 1-based session index. If `nothing` (default), data for all sessions
   is returned.
 
+Returns
+-------
+If `name` is `nothing`, returns a `DimArray` with all channels.
+If `name` (or channel index) is provided, returns the selected channel.
+
 See also: [`time_stamps`](@ref), [`session_range`](@ref), [`BeForRecord`](@ref)
 """
 forces(d::BeForRecord, name::Symbol; session::Union{Nothing, Int} = nothing) =
@@ -242,7 +256,7 @@ forces(d::BeForRecord, name::String; session::Union{Nothing, Int} = nothing) =
 	forces(d; session)[:, At(name)]
 forces(d::BeForRecord, idx::Int; session::Union{Nothing, Int} = nothing) =
 	forces(d; session)[:, idx]
-function forces(d::BeForRecord;	session::Union{Nothing, Int} = nothing)
+function forces(d::BeForRecord; session::Union{Nothing, Int} = nothing)
 	if isnothing(session)
 		return d.dat
 	else
@@ -251,8 +265,8 @@ function forces(d::BeForRecord;	session::Union{Nothing, Int} = nothing)
 end
 
 """
-	add_session(d::BeForRecord, session_data::BeForRecord) -> BeForRecord
-	add_session(d::BeForRecord, session_data::DataFrame) -> BeForRecord
+	add_session(d::BeForRecord, session_data::BeForRecord)
+	add_session(d::BeForRecord, session_data::DataFrame)
 
 Return a new `BeForRecord` with `session_data` appended as an additional session.
 
@@ -265,6 +279,10 @@ Keyword Arguments
 	concatenation requires that appended time stamps remain ordered. If `true`, the
 	appended session keeps its own local time axis and is concatenated along the
 	`time` dimension.
+
+Returns
+-------
+A new `BeForRecord` with the appended session.
 
 See also: [`split_sessions`](@ref), [`session_range`](@ref)
 """
@@ -290,14 +308,19 @@ function add_session(d::BeForRecord, session_data::BeForRecord; reset_timestamps
 end
 
 """
-	session_range(d::BeForRecord, session::Int) -> UnitRange{Int}
-	session_range(d::BeForRecord) -> Vector{UnitRange{Int}}
+	session_range(d::BeForRecord, session::Int)
+	session_range(d::BeForRecord)
 
 Return the sample index range for the given session (1-based), or a vector of
 ranges for all sessions when called without a session argument.
 
 The range covers all samples from the session's start up to and including the last
 sample before the next session (or the end of the record for the last session).
+
+Returns
+-------
+When `session` is provided, returns a `UnitRange{Int}`.
+Without `session`, returns a vector of ranges for all sessions.
 
 See also: [`split_sessions`](@ref), [`forces`](@ref), [`time_stamps`](@ref)
 """
@@ -310,9 +333,10 @@ session_range(d::BeForRecord) = [session_range(d, s) for s in 1:length(d.session
 
 
 """
-	find_samples_by_time(times::AbstractVector, d::BeForRecord) -> Vector{Int}
+	find_samples_by_time(times::Real, d::BeForRecord)
+	find_samples_by_time(times::AbstractVector{<:Real}, d::BeForRecord)
 
-Return the sample indices in `d` that correspond to the given `times` (in ms).
+Return sample indices in `d` that correspond to the given time value(s) in ms.
 
 For each value in `times`, the index of the first time stamp that is greater than or
 equal to that value is returned. If no exact match exists, the next larger time stamp
@@ -325,11 +349,44 @@ is used:
 If a value is larger than the final time stamp, the returned index is
 `d.n_samples + 1`.
 
+Returns
+-------
+Returns an integer index for scalar input, or a vector of indices for vector input.
+
 See also: [`time_stamps`](@ref), [`extract_epochs`](@ref)
 """
-function find_samples_by_time(times::AbstractVector, d::BeForRecord)
-	ts = time_stamps(d)
-	return searchsortedfirst.(Ref(ts), times)
+function find_samples_by_time(times::Union{Real, AbstractVector{<:Real}}, d::BeForRecord)
+	return find_larger_or_equal(time_stamps(d).val, times)
+end;
+
+## helper functions
+"""
+	find_larger_or_equal(hay, needle)
+
+Return the index of the first value in sorted `hay` that is greater than or equal
+to `needle`.
+
+When `needle` is a vector, the lookup is applied elementwise.
+"""
+find_larger_or_equal(hay::AbstractVector{<:Real}, needle::Real) = searchsortedfirst(hay, needle)
+find_larger_or_equal(hay::AbstractVector{<:Real}, needles::AbstractVector{<:Real}) = searchsortedfirst.(Ref(hay), needles)
+
+"""
+	make_time_stamps(n::Integer, sampling_rate::Real; zero_sample=1)
+
+Construct an evenly spaced time axis (in ms) of length `n`.
+
+`zero_sample` specifies which 1-based sample index should correspond to 0 ms.
+
+Returns
+-------
+An `AbstractRange` of time stamps in milliseconds.
+"""
+function make_time_stamps(n::Integer, sampling_rate::Real; zero_sample::Int = 1)
+	step = 1000.0 / sampling_rate # in ms
+	start_time = (1 - zero_sample) * step
+	final_time = (n - zero_sample) * step
+	return start_time:step:final_time
 end;
 
 function Base.show(io::IO, mime::MIME"text/plain", x::BeForRecord)
