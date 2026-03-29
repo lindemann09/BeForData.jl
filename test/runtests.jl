@@ -33,7 +33,7 @@ end
 @testset "Epochs" begin
     ep = extract_epochs(rec, :Fx, zero_times=[120, 450, 870, 990], n_samples = 100, n_samples_before=10)
     n_samples = 100 + 10
-    @test ep.dat isa Matrix
+    @test ep.dat isa DimArray
     @test ep.n_samples == n_samples
     @test size(ep.dat) == (4, n_samples)
     @test ep.sampling_rate == 2000.0

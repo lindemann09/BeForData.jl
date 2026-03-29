@@ -161,7 +161,7 @@ function Base.copy(d::BeForRecord)
 		copy(d.sessions), copy(d.meta))
 end
 
-Base.propertynames(::BeForRecord) = (:forces, :additional_dat, :sampling_rate, :sessions, :meta,
+Base.propertynames(::BeForRecord) = (:dat, :additional_dat, :sampling_rate, :sessions, :meta,
 	:time_column, :n_samples, :n_forces, :force_cols)
 function Base.getproperty(d::BeForRecord, s::Symbol)
 	if s === :n_samples

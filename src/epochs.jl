@@ -31,18 +31,16 @@ See also: [`BeForRecord`](@ref), [`extract_epochs`](@ref), [`adjust_baseline!`](
 """
 
 struct BeForEpochs
-	dat::Matrix{Float64}
+	dat::DimArray{Float64, 2}
 	sampling_rate::Real
 	design::DataFrame
 	baseline::Vector{Float64}
-	zero_sample::Int
 	meta::Dict{String, Any}
 
-	function BeForEpochs(dat::Matrix{Float64},
+	function BeForEpochs(dat::DimArray{Float64, 2},
 		sampling_rate::Real,
 		design::DataFrame,
 		baseline::Vector{Float64},
-		zero_sample::Int,
 		meta::Dict{String, Any})
 		lf = size(dat, 1)
 		lb = length(baseline)
@@ -57,7 +55,7 @@ struct BeForEpochs
 				"Number of rows of force ($(lf)) must match the number of rows ins the design ($(n)).",
 			),
 		)
-		return new(dat, sampling_rate, design, baseline, zero_sample, meta)
+		return new(dat, sampling_rate, design, baseline, meta)
 	end
 end;
 
@@ -97,9 +95,10 @@ function BeForEpochs(force::Matrix{Float64},
 	if isnothing(meta)
 		meta = Dict{String, Any}()
 	end
-	return BeForEpochs(force, sampling_rate, design,
-		baseline, zero_sample, meta)
-
+	epoch = collect(1:size(force, 1))
+	sample =collect(1-zero_sample:size(force, 2)-zero_sample)
+	force_dat = DimArray(force, (epoch=epoch, sample=sample))
+	return BeForEpochs(force_dat, sampling_rate, design, baseline, meta)
 end
 
 
@@ -112,6 +111,8 @@ function Base.getproperty(x::BeForEpochs, s::Symbol)
 		return length(x.baseline) > 0
 	elseif s === :n_samples
 		return size(x.dat, 2)
+	elseif s === :zero_sample
+		return findfirst(x.dat.dims[2] .== 0)
 	else
 		return getfield(x, s)
 	end
@@ -125,7 +126,7 @@ baseline vector, and metadata dictionary.
 """
 function Base.copy(fe::BeForEpochs)
 	return BeForEpochs(copy(fe.dat), fe.sampling_rate, copy(fe.design),
-		copy(fe.baseline), fe.zero_sample, copy(fe.meta))
+	copy(fe.baseline), copy(fe.meta))
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", x::BeForEpochs)
@@ -148,7 +149,7 @@ function Base.show(io::IO, mime::MIME"text/plain", x::BeForEpochs)
 end
 
 """
-	forces(d::BeForEpochs) -> Matrix{Float64}
+	forces(d::BeForEpochs) -> DimArray{Float64, 2}
 
 Return the raw force matrix of `d` with shape `(n_epochs, n_samples)`.
 
@@ -246,8 +247,8 @@ function extract_epochs(d::BeForRecord,
 	end
 	meta = Dict{String, Any}("record meta" => copy(d.meta))
 
-	return BeForEpochs(force_mtx, d.sampling_rate, copy(design),
-		Float64[], n_samples_before + 1, meta)
+	return BeForEpochs(force_mtx, d.sampling_rate; design = copy(design),
+		baseline = Float64[], zero_sample = n_samples_before + 1, meta = meta)
 end;
 
 """
