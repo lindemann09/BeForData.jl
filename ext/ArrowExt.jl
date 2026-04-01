@@ -1,6 +1,7 @@
 module ArrowExt
 
 using Arrow
+using DimensionalData
 using DataFrames
 using BeForData
 using JSON
@@ -44,7 +45,7 @@ function BeForData.BeForRecord(arrow_table::Arrow.Table;
 		throw(ArgumentError("No sampling rate defined!"))
 	end
 	return BeForRecord(DataFrame(arrow_table), sampling_rate;
-		time_column, sessions, meta)
+		force_cols = nothing, time_column, sessions, meta)
 end
 
 """
@@ -109,7 +110,7 @@ function BeForData.BeForEpochs(arrow_table::Arrow.Table;
 		recm = replace(meta["record meta"], "'" => '\"')
 		meta["record meta"] = Dict(JSON.parse(recm))
 	end
-	BeForEpochs(mtx, sampling_rate, design, baseline, zero_sample, meta)
+	BeForEpochs(mtx, sampling_rate; design, baseline, zero_sample, meta)
 end
 
 """
@@ -131,7 +132,7 @@ function BeForData.write_feather(rec::BeForRecord, filepath::AbstractString;
 		"sessions" => join(string.(rec.sessions .- 1), ",")
 	])
 	metadata = merge(schema, values_to_string(rec.meta))
-	Arrow.write(filepath, rec.dat; compress, metadata)
+	Arrow.write(filepath, DataFrame(rec); compress, metadata)
 end
 
 """
@@ -154,9 +155,14 @@ function BeForData.write_feather(ep::BeForEpochs, filepath::AbstractString;
 		"zero_sample" => string(ep.zero_sample - 1)])
 	metadata = merge(schema, values_to_string(ep.meta))
 
-	# build dataframe
-	cn = [string(x) for x in 1:ep.dat.size[2]] # column names for data
-	df = hcat(DataFrame(ep.dat, cn), ep.design)
+	if ep.dat isa DimArray
+		mtx = Matrix(ep.dat	)
+	else
+		# old version TODO is deprecated
+		mtx = ep.dat
+	end
+	cn = string.(1:size(mtx, 2)) # column names for data
+	df = hcat(DataFrame(mtx, cn), ep.design)
 	if ep.is_baseline_adjusted
 		df[!, BSL_COL_NAME] = ep.baseline
 	end

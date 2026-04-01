@@ -28,6 +28,7 @@ rec = BeForRecord(df, 2000.0; time_column = "time", force_cols = ["Fz", "Fx"])
 	sessions = split_sessions(rec2) # split back into individual records
 	@test length(sessions) == 2
 	@test all(s -> s.n_samples == 2000, sessions) == true
+	@test DataFrame(rec) isa DataFrame
 end
 
 @testset "Epochs" begin

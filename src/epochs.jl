@@ -60,8 +60,12 @@ struct BeForEpochs
 end;
 
 """
-	BeForEpochs(force::Matrix{Float64}, sampling_rate::Real;
-		design=nothing, baseline=nothing, zero_sample=1, meta=nothing)
+	BeForEpochs(force::Matrix{Float64}, sampling_rate::Real; zero_sample::Int = 1,
+		design::Union{Nothing, DataFrame} = nothing, baseline::Union{Nothing,
+		Vector{Float64}} = nothing, meta::Union{Nothing, Dict{String, Any}} = nothing)
+	BeForEpochs(force::DimArray{Float64, 2}, sampling_rate::Real;
+		design::Union{Nothing, DataFrame}=nothing, baseline::Union{Nothing,
+		Vector{Float64}} = nothing, meta::Union{Nothing, Dict{String, Any}} = nothing)
 
 Construct a `BeForEpochs` from a force matrix.
 
@@ -72,20 +76,34 @@ Arguments
 
 Keyword Arguments
 -----------------
+- `zero_sample`: 1-based column index in `force` corresponding to time zero.
+  Defaults to 1.
 - `design`: DataFrame with one row per epoch containing trial metadata. Defaults to
   an empty DataFrame.
 - `baseline`: Per-epoch baseline values (length must equal `n_epochs`). Defaults to
   an empty vector (no baseline correction applied).
-- `zero_sample`: 1-based column index in `force` corresponding to time zero.
-  Defaults to 1.
+
 - `meta`: Metadata dictionary. Defaults to an empty dictionary.
 """
 function BeForEpochs(force::Matrix{Float64},
 	sampling_rate::Real;
+	zero_sample::Int = 1,
 	design::Union{Nothing, DataFrame} = nothing,
 	baseline::Union{Nothing, Vector{Float64}} = nothing,
-	zero_sample::Int = 1,
 	meta::Union{Nothing, Dict{String, Any}} = nothing)
+
+	epoch = 1:size(force, 1)
+	t = make_time_stamps(size(force, 2), sampling_rate; zero_sample)
+	force_dimarray = DimArray(force, (epoch = epoch, time = t))
+	return BeForEpochs(force_dimarray, sampling_rate, design, baseline, meta)
+end
+
+function BeForEpochs(force::DimArray{Float64, 2},
+	sampling_rate::Real;
+	design::Union{Nothing, DataFrame} = nothing,
+	baseline::Union{Nothing, Vector{Float64}} = nothing,
+	meta::Union{Nothing, Dict{String, Any}} = nothing)
+
 	if isnothing(baseline)
 		baseline = Float64[]
 	end
@@ -95,12 +113,8 @@ function BeForEpochs(force::Matrix{Float64},
 	if isnothing(meta)
 		meta = Dict{String, Any}()
 	end
-	epoch = 1:size(force, 1)
-	t = make_time_stamps(size(force, 2), sampling_rate; zero_sample)
-	force_dat = DimArray(force, (epoch = epoch, time = t))
-	return BeForEpochs(force_dat, sampling_rate, design, baseline, meta)
+	return BeForEpochs(force, sampling_rate, design, baseline, meta)
 end
-
 
 Base.propertynames(::BeForEpochs) = (:dat, :sampling_rate, :design, :baseline,
 	:zero_sample, :n_samples, :meta, :n_epochs, :is_baseline_adjusted)
@@ -180,7 +194,7 @@ The epoch time axis as an abstract vector-like object (in ms).
 
 See also: [`forces`](@ref), [`find_samples_by_time`](@ref)
 """
-time_stamps(d::BeForEpochs) = dims(d.dat, 2)
+time_stamps(d::BeForEpochs) = dims(d.dat, 2).val.data
 
 ## processing
 """
@@ -270,8 +284,8 @@ function extract_epochs(d::BeForRecord,
 	end
 	meta = Dict{String, Any}("record meta" => copy(d.meta))
 
-	return BeForEpochs(force_mtx, d.sampling_rate; design = copy(design),
-		baseline = Float64[], zero_sample = n_samples_before + 1, meta = meta)
+	return BeForEpochs(force_mtx, d.sampling_rate; design = copy(design), baseline = Float64[],
+					zero_sample = n_samples_before + 1, meta = meta)
 end;
 
 """
@@ -380,8 +394,8 @@ function DataFrames.subset(fe::BeForEpochs, rows::Base.AbstractVecOrTuple{Intege
 		bsln = copy(fe.baseline)
 	end
 	subset_design = fe.design[rows, :]
-	return BeForEpochs(force, fe.sampling_rate; design = subset_design,
-		baseline = bsln, zero_sample = fe.zero_sample, meta = copy(fe.meta))
+	return BeForEpochs(force, fe.sampling_rate; design = subset_design, baseline = bsln,
+			meta = copy(fe.meta))
 end
 
 function DataFrames.subset(fe::BeForEpochs, args...)
@@ -411,4 +425,4 @@ Returns an integer index for scalar input, or a vector of indices for vector inp
 See also: [`time_stamps`](@ref), [`extract_epochs`](@ref)
 """
 find_samples_by_time(times::Union{Real, AbstractVector{<:Real}}, d::BeForEpochs) =
-	find_larger_or_equal(time_stamps(d).val, times)
+	find_larger_or_equal(time_stamps(d), times)

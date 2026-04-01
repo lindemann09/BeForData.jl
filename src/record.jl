@@ -105,8 +105,10 @@ Returns
 -------
 A `BeForRecord` where `forces` contains only the selected force columns and
 `additional_dat` contains any remaining, non-time/non-force columns.
+
+See also: [`DataFrame(::BeForRecord)`](@ref) for converting back to a `DataFrame`.
 """
-function BeForRecord(dat::DataFrame,
+function BeForRecord(dat::DataFrame, #FIXME Table.jl support not Dataframe specific
 	sampling_rate::Real;
 	force_cols::Union{Nothing, Symbol, String, AbstractVector{String}, AbstractVector{Symbol}} = nothing,
 	time_column::Union{Nothing, Symbol, String} = nothing,
@@ -149,6 +151,26 @@ function BeForRecord(dat::DataFrame,
 end
 
 """
+	DataFrame(rec::BeForRecord)
+
+Convert a `BeForRecord` into a `DataFrame`.
+
+The resulting `DataFrame` contains the force data unstacked into columns by their
+channel names, plus any columns from `additional_dat`.
+
+Returns
+-------
+A `DataFrame` containing both force data and additional variables.
+"""
+function DataFrames.DataFrame(rec::BeForRecord)
+	df = unstack(DataFrame(rec.dat), :name, :value)
+	if !isnothing(rec.additional_dat)
+		df = hcat(df, rec.additional_dat)
+	end
+	return df
+end
+
+"""
 	copy(d::BeForRecord)
 
 Return a deep copy of `d`, including copies of the underlying data, session
@@ -178,6 +200,7 @@ function Base.getproperty(d::BeForRecord, s::Symbol)
 		return getfield(d, s)
 	end
 end
+
 
 """
 	split_sessions(d::BeForRecord)
@@ -222,7 +245,7 @@ The time axis as an abstract vector-like object (in ms).
 See also: [`session_range`](@ref), [`forces`](@ref)
 """
 function time_stamps(d::BeForRecord; session::Union{Nothing, Int} = nothing)
-	t = dims(d.dat, 1)
+	t = dims(d.dat, 1).val.data
 	if isnothing(session)
 		return t
 	else
@@ -356,7 +379,7 @@ Returns an integer index for scalar input, or a vector of indices for vector inp
 See also: [`time_stamps`](@ref), [`extract_epochs`](@ref)
 """
 function find_samples_by_time(times::Union{Real, AbstractVector{<:Real}}, d::BeForRecord)
-	return find_larger_or_equal(time_stamps(d).val, times)
+	return find_larger_or_equal(time_stamps(d), times)
 end;
 
 ## helper functions
