@@ -44,7 +44,7 @@ function BeForData.BeForRecord(arrow_table::Arrow.Table;
 		throw(ArgumentError("No sampling rate defined!"))
 	end
 	return BeForRecord(DataFrame(arrow_table), sampling_rate;
-		time_column, sessions, meta)
+		force_cols = nothing, time_column, sessions, meta)
 end
 
 """
@@ -109,7 +109,7 @@ function BeForData.BeForEpochs(arrow_table::Arrow.Table;
 		recm = replace(meta["record meta"], "'" => '\"')
 		meta["record meta"] = Dict(JSON.parse(recm))
 	end
-	BeForEpochs(mtx, sampling_rate, design, baseline, zero_sample, meta)
+	BeForEpochs(mtx, sampling_rate; design, baseline, zero_sample, meta)
 end
 
 """

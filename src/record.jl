@@ -106,7 +106,7 @@ Returns
 A `BeForRecord` where `forces` contains only the selected force columns and
 `additional_dat` contains any remaining, non-time/non-force columns.
 """
-function BeForRecord(dat::DataFrame,
+function BeForRecord(dat::DataFrame, #FIXME Table.jl support not Dataframe specific
 	sampling_rate::Real;
 	force_cols::Union{Nothing, Symbol, String, AbstractVector{String}, AbstractVector{Symbol}} = nothing,
 	time_column::Union{Nothing, Symbol, String} = nothing,
