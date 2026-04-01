@@ -156,7 +156,7 @@ function BeForData.write_feather(ep::BeForEpochs, filepath::AbstractString;
 	metadata = merge(schema, values_to_string(ep.meta))
 
 	if ep.dat isa DimArray
-		mtx = Matrix(ep.dat	)
+		mtx = ep.dat.data
 	else
 		# old version TODO is deprecated
 		mtx = ep.dat
