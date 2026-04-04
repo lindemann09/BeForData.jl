@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Examples · BeForData.jl</title><meta name="title" content="Examples · BeForData.jl"/><meta property="og:title" content="Examples · BeForData.jl"/><meta property="twitter:title" content="Examples · BeForData.jl"/><meta name="description" content="Documentation for BeForData.jl."/><meta property="og:description" content="Documentation for BeForData.jl."/><meta property="twitter:description" content="Documentation for BeForData.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">BeForData.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">BeForData.jl Documentation</a></li><li class="is-active"><a class="tocitem" href>Examples</a><ul class="internal"><li><a class="tocitem" href="#Data-Types"><span>Data Types</span></a></li><li><a class="tocitem" href="#Preprocessing"><span>Preprocessing</span></a></li><li><a class="tocitem" href="#File-I/O-(requires-Arrow)"><span>File I/O (requires <code>Arrow</code>)</span></a></li><li><a class="tocitem" href="#Loading-XDF-Streams-(requires-XDF)"><span>Loading XDF Streams (requires <code>XDF</code>)</span></a></li></ul></li><li><a class="tocitem" href="../api/">API</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Examples</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Examples</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/lindemann09/BeForData.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/lindemann09/BeForData.jl/blob/main/docs/src/examples.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Examples"><a class="docs-heading-anchor" href="#Examples">Examples</a><a id="Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Examples" title="Permalink"></a></h1><h2 id="Data-Types"><a class="docs-heading-anchor" href="#Data-Types">Data Types</a><a id="Data-Types-1"></a><a class="docs-heading-anchor-permalink" href="#Data-Types" title="Permalink"></a></h2><h3 id="BeForRecord"><a class="docs-heading-anchor" href="#BeForRecord"><code>BeForRecord</code></a><a id="BeForRecord-1"></a><a class="docs-heading-anchor-permalink" href="#BeForRecord" title="Permalink"></a></h3><p>A continuous force recording with one or more sessions.</p><pre><code class="language-julia hljs">using DataFrames, BeForData
+
+# Create from a DataFrame
+df = DataFrame(time = 0:0.5:999.5, Fz = randn(2000), trigger = Int.(rand(2000).&gt;0.9))
+rec = BeForRecord(df, 2000.0; time_column = &quot;time&quot;)
+
+# Access data
+forces(rec)           # DataFrame of force channels
+time_stamps(rec)      # time vector in ms
+
+# Multi-session support
+rec2 = add_session(rec, df)     # append a second session
+sessions = split_sessions(rec2) # split back into individual records</code></pre><p>Key properties: <code>n_samples</code>, <code>n_forces</code>, <code>sampling_rate</code>, <code>sessions</code>, <code>meta</code>.</p><h3 id="BeForEpochs"><a class="docs-heading-anchor" href="#BeForEpochs"><code>BeForEpochs</code></a><a id="BeForEpochs-1"></a><a class="docs-heading-anchor-permalink" href="#BeForEpochs" title="Permalink"></a></h3><p>A trial-by-sample force matrix extracted from a <code>BeForRecord</code>.</p><pre><code class="language-julia hljs"># Extract epochs around event onsets (sample indices)
+onsets = [100, 400, 700, 1000]
+epochs = extract_epochs(rec, &quot;Fz&quot;;
+    zero_samples    = onsets,
+    n_samples       = 200,
+    n_samples_before = 50)
+
+# Or use time stamps (ms) directly
+epochs = extract_epochs(rec, &quot;Fz&quot;;
+    zero_times       = [50.0, 200.0, 350.0, 500.0],
+    n_samples        = 200,
+    n_samples_before = 50)
+
+# Baseline correction using samples before time zero
+adjust_baseline!(epochs, 1:50)
+
+# Attach trial design information
+using DataFrames
+design = DataFrame(condition = [&quot;A&quot;,&quot;B&quot;,&quot;A&quot;,&quot;B&quot;])
+epochs = extract_epochs(rec, &quot;Fz&quot;; zero_samples = onsets,
+    n_samples = 200, n_samples_before = 50, design = design)
+
+# Subset by row indices or design conditions
+subset(epochs, [1, 3])                         # rows 1 and 3
+subset(epochs, :condition =&gt; x -&gt; x .== &quot;A&quot;)  # condition A only</code></pre><p>Key properties: <code>n_epochs</code>, <code>n_samples</code>, <code>sampling_rate</code>, <code>zero_sample</code>, <code>is_baseline_adjusted</code>, <code>design</code>, <code>meta</code>.</p><h2 id="Preprocessing"><a class="docs-heading-anchor" href="#Preprocessing">Preprocessing</a><a id="Preprocessing-1"></a><a class="docs-heading-anchor-permalink" href="#Preprocessing" title="Permalink"></a></h2><pre><code class="language-julia hljs"># Scale all force channels (e.g. convert raw sensor units to Newtons)
+scale_force!(rec, 0.00981)
+
+# Smooth with a centred moving average
+smoothed = moving_average(rec, 20)   # 20-sample window
+
+# Remove a slow drift by subtracting a wide moving average
+detrended = detrend(rec, 500)        # 500-sample window</code></pre><h3 id="Filtering-(requires-DSP)"><a class="docs-heading-anchor" href="#Filtering-(requires-DSP)">Filtering (requires <code>DSP</code>)</a><a id="Filtering-(requires-DSP)-1"></a><a class="docs-heading-anchor-permalink" href="#Filtering-(requires-DSP)" title="Permalink"></a></h3><pre><code class="language-julia hljs">using DSP
+# Butterworth low-pass filter
+filtered = lowpass_filter(rec; cutoff = 10.0, order = 4)
+
+# Apply arbitrary DSP filter coefficients
+coef = digitalfilter(Lowpass(10.0), Butterworth(4); fs = rec.sampling_rate)
+filtered = filtfilt_record(coef, rec)</code></pre><h2 id="File-I/O-(requires-Arrow)"><a class="docs-heading-anchor" href="#File-I/O-(requires-Arrow)">File I/O (requires <code>Arrow</code>)</a><a id="File-I/O-(requires-Arrow)-1"></a><a class="docs-heading-anchor-permalink" href="#File-I/O-(requires-Arrow)" title="Permalink"></a></h2><pre><code class="language-julia hljs">using Arrow
+
+# Save and reload a continuous recording
+write_feather(rec, &quot;recording.feather&quot;)
+rec2 = BeForRecord(Arrow.Table(&quot;recording.feather&quot;))
+
+# Save and reload epoch data
+write_feather(epochs, &quot;epochs.feather&quot;)
+epochs2 = BeForEpochs(Arrow.Table(&quot;epochs.feather&quot;))</code></pre><h2 id="Loading-XDF-Streams-(requires-XDF)"><a class="docs-heading-anchor" href="#Loading-XDF-Streams-(requires-XDF)">Loading XDF Streams (requires <code>XDF</code>)</a><a id="Loading-XDF-Streams-(requires-XDF)-1"></a><a class="docs-heading-anchor-permalink" href="#Loading-XDF-Streams-(requires-XDF)" title="Permalink"></a></h2><pre><code class="language-julia hljs">using XDF
+streams = load_xdf(&quot;experiment.xdf&quot;)
+
+# Inspect a stream
+xdf_channel_info(streams, &quot;ForcePlate&quot;)
+
+# Convert directly to BeForRecord
+rec = BeForRecord(streams, &quot;ForcePlate&quot;, 1000.0)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« BeForData.jl Documentation</a><a class="docs-footer-nextpage" href="../api/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Saturday 4 April 2026 14:56">Saturday 4 April 2026</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
