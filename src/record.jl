@@ -69,7 +69,6 @@ Keyword Arguments
   If `nothing` (default), a single session is inferred (`[1]` for non-empty data).
 - `meta`: Metadata dictionary. Defaults to an empty dictionary.
 
-See also: [`BeForRecord(::DataFrame, ...)`](@ref)
 """
 BeForRecord(dat::DimArray, additional_dat::DataFrame, sampling_rate::Real;
 	sessions::Union{Nothing, AbstractVector{Int}} = nothing, meta::Dict = Dict{String, Any}()) =

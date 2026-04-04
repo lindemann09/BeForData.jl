@@ -1,6 +1,6 @@
 name = "BeForData"
 uuid = "49581401-e3b0-43cb-bb9c-49750952130d"
-version = "0.3.13"
+version = "0.3.13b"
 authors = ["Oliver Lindemann"]
 
 [deps]
