@@ -11,7 +11,7 @@ epoch extraction, baseline correction, and file I/O.
 
 **Documentation**: [https://lindemann09.github.io/BeForData.jl](https://lindemann09.github.io/BeForData.jl)
 
-(c) 2024 Oliver Lindemann, Erasmus University Rotterdam
+(c) 2025 Oliver Lindemann, Erasmus University Rotterdam
 
 
 ## Overview

@@ -5,7 +5,7 @@ It provides two core data structures — `BeForRecord` for continuous recordings
 `BeForEpochs` for trial-based epoch data — together with tools for preprocessing,
 epoch extraction, baseline correction, and file I/O.
 
-(c) 2024 Oliver Lindemann, Erasmus University Rotterdam
+(c) 2025 Oliver Lindemann, Erasmus University Rotterdam
 
 ## Overview
 
@@ -47,10 +47,10 @@ If you use BeForData.jl in your research, please cite it as:
 Or in BibTeX:
 
 ```bibtex
-@software{lindemann2024beforedata,
+@software{lindemann2025beforedata,
   author    = {Lindemann, Oliver},
   title     = {{BeForData.jl}: A {Julia} package for behavioural response force data},
-  year      = {2024},
+  year      = {2025},
   publisher = {JuliaHub},
   url       = {https://github.com/lindemann09/BeForData.jl}
 }
