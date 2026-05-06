@@ -47,7 +47,7 @@ If you use BeForData.jl in your research, please cite it as:
 Or in BibTeX:
 
 ```bibtex
-@software{lindemann2025beforedata,
+@software{lindemann2025befordata,
   author    = {Lindemann, Oliver},
   title     = {{BeForData.jl}: A {Julia} package for behavioural response force data},
   year      = {2025},
