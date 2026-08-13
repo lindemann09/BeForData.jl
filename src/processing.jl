@@ -64,7 +64,7 @@ end
 function aggregate(fe::BeForEpochs,
 	agg_fnc::Function,
 	rows::TOptionalRowSelect,
-	design::Union{DataFrame, DataFrameRow})
+	new_design::Union{DataFrame, DataFrameRow})
 
 	if isnothing(rows)
 		dat = agg_fnc(fe.dat, dims = 1)
@@ -77,9 +77,9 @@ function aggregate(fe::BeForEpochs,
 		end
 	end
 
-	if design isa DataFrameRow
-		design = DataFrame(design)
-	elseif nrow(design) > 1
+	if new_design isa DataFrameRow
+		new_design = DataFrame(new_design)
+	elseif nrow(new_design) > 1
 		throw(ArgumentError("Design has to be a DataFrame with one or no rows or DataFrameRow."))
 	end
 
@@ -90,16 +90,16 @@ function aggregate(fe::BeForEpochs,
 	meta["agg_fnc"] = string(agg_fnc)
 	return BeForEpochs(dat, fe.sampling_rate;
 		baseline = bsl,
-		design, meta)
+		design=new_design, meta)
 end
 
 aggregate(fe::BeForEpochs, agg_fnc::Function, rows::TOptionalRowSelect) = aggregate(fe, agg_fnc, rows, DataFrame())
-aggregate(fe::BeForEpochs, agg_fnc::Function, design::Union{DataFrame, DataFrameRow}) = aggregate(fe, agg_fnc, nothing, design)
+aggregate(fe::BeForEpochs, agg_fnc::Function, new_design::Union{DataFrame, DataFrameRow}) = aggregate(fe, agg_fnc, nothing, new_design)
 
 """
 	aggregate(fe::BeForEpochs, agg_fnc::Function rows::Union{Nothing, BitVector, Vector{<:Integer}}, design::Union{DataFrame, DataFrameRow})
 	aggregate(fe::BeForEpochs, agg_fnc::Function, rows::Union{Nothing, BitVector, Vector{<:Integer}})
-	aggregate(fe::BeForEpochs, agg_fnc::Function, design::Union{DataFrame, DataFrameRow})
+	aggregate(fe::BeForEpochs, agg_fnc::Function, new_design::Union{DataFrame, DataFrameRow})
 	aggregate(fe::BeForEpochs, agg_fnc::Function;
 			condition::ColumnIndex = :all,
 			subject_id::Union{Nothing, ColumnIndex} = nothing)
