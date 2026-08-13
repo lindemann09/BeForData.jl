@@ -2,15 +2,18 @@ using Aqua
 using BeForData
 using DataFrames
 using DimensionalData
+using Random
+using Statistics
 using Test
 
 @testset "Aqua.jl" begin
 	#Aqua.test_all(BeForData; ambiguities = false, stale_deps = false)
 end
 
-df = DataFrame(time = 0:0.5:999.5, Fz = randn(2000),
+rng = MersenneTwister(1909)
+df = DataFrame(time = 0:0.5:999.5, Fz = randn(rng, 2000),
 	Fx = 0:(2000-1),
-	trigger = Int.(rand(2000) .> 0.9))
+	trigger = Int.(rand(rng, 2000) .> 0.9))
 rec = BeForRecord(df, 2000.0; time_column = "time", force_cols = ["Fz", "Fx"])
 
 @testset "Record" begin
@@ -31,8 +34,9 @@ rec = BeForRecord(df, 2000.0; time_column = "time", force_cols = ["Fz", "Fx"])
 	@test DataFrame(rec) isa DataFrame
 end
 
+ep = extract_epochs(rec, :Fx, zero_times = [120, 450, 870, 990], n_samples = 100, n_samples_before = 10)
+
 @testset "Epochs" begin
-	ep = extract_epochs(rec, :Fx, zero_times = [120, 450, 870, 990], n_samples = 100, n_samples_before = 10)
 	n_samples = 100 + 10
 	@test ep.dat isa DimArray
 	@test ep.n_samples == n_samples
@@ -42,4 +46,12 @@ end
 	@test time_stamps(ep)[20] == (1000.0 / ep.sampling_rate) * (20 - ep.zero_sample)
 	@test ep.n_epochs == 4
 	@test forces(ep)[1:2, 11] == [120.0, 450.0] .* 2
+end
+
+@testset "Processing" begin
+	@test minimum(ep)[1:2] == [230.0, 890.0]
+	@test maximum(ep)[1:2] == [339.0, 999.0]
+	@test peak_differences(ep, 20)[1] == 20.0
+	@test diff(ep, dims=1).dat isa DimArray
+	@test aggregate(ep, mean).dat isa DimArray
 end

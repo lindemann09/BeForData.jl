@@ -23,9 +23,20 @@ export scale_force!,
 	moving_average,
 	detrend
 
+export
+    # processing
+    peak_differences,
+    epoch_rejection_ids,
+    epoch_rejection,
+    aggregate,
+    minimum,
+    maximum,
+    diff
+
 include("record.jl")
 include("epochs.jl")
 include("preprocessing.jl")
+include("processing.jl")
 
 
 ## Filtering support (requires DSP)
